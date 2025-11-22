@@ -1,0 +1,11 @@
+.pio/
+.venv/
+.platformio/
+artifacts/
+.pioenvs/
+.piolibdeps/
+config/ota.env
+config/secrets.env
+.DS_Store
+*.pyc
+*.bin
