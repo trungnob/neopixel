@@ -189,13 +189,11 @@ case "$command" in
     ensure_pio
     ensure_ota_password
     ensure_wifi_secrets
-    ensure_ota_host
-    log "Uploading over serial ($ENVIRONMENT)"
-    cmd=("$PIO_BIN" run -e "$ENVIRONMENT" -t upload)
-    if [[ -n "$PORT" ]]; then
-      cmd+=(--upload-port "$PORT")
-    fi
-    "${cmd[@]}"
+    require_port
+    # Use serial-specific environment if it exists, otherwise use default
+    SERIAL_ENV="${ENVIRONMENT}_serial"
+    log "Uploading over serial ($SERIAL_ENV) to $PORT"
+    "$PIO_BIN" run -e "$SERIAL_ENV" -t upload --upload-port "$PORT"
     ;;
   upload-ota)
     ensure_pio

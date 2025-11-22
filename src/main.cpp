@@ -17,13 +17,13 @@
 #endif
 
 #define LED_PIN     D4
-#define MAX_LEDS    200      // Maximum possible LEDs (memory buffer)
+#define MAX_LEDS    1500     // Maximum possible LEDs (memory buffer) - 9 strips × 144 = 1296
 #define BRIGHTNESS  64
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 
 CRGB leds[MAX_LEDS];
-int activeLeds = 144;        // Default to 144 based on your label
+int activeLeds = 1296;       // 9 strips of 144 LEDs each
 ESP8266WebServer server(80);
 
 // State variables
@@ -62,7 +62,7 @@ const char htmlPage[] PROGMEM = R"=====(
   <div class="control-group">
     <label>Number of LEDs:</label>
     <form action="/set" method="get" style="display:inline;">
-      <input type="number" name="c" id="c" min="1" max="200" value="%LEDS%">
+      <input type="number" name="c" id="c" min="1" max="1500" value="%LEDS%">
       <button type="submit" style="display:inline; width:auto; padding: 10px;">Set</button>
     </form>
   </div>
@@ -204,18 +204,32 @@ void handleSet() {
 bool serverRunning = false;
 
 void setup() {
+  // Start Serial FIRST for debugging
+  Serial.begin(115200);
+  delay(100);
+  Serial.println("\n\n=================================");
+  Serial.println("ESP8266 LED Controller Starting");
+  Serial.println("=================================");
+
   // LEDs
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, MAX_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
+  Serial.println("LEDs initialized");
 
   // WiFi - Station Mode (Connect to Home WiFi)
   const char* ssid = WIFI_SSID;
   const char* password = WIFI_PASSWORD;
-  
+
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(ssid);
+  Serial.print("Password: ");
+  Serial.println(password);
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  
+
   // Wait for connection - indicate with blue flashing
+  int attempts = 0;
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     leds[0] = CRGB::Blue; // connecting
@@ -223,19 +237,26 @@ void setup() {
     delay(100);
     leds[0] = CRGB::Black;
     FastLED.show();
+
+    Serial.print(".");
+    attempts++;
+    if (attempts % 20 == 0) {
+      Serial.println();
+      Serial.print("Still trying... Status: ");
+      Serial.println(WiFi.status());
+    }
   }
-  
+
   // Connected - solid green for 500ms
   leds[0] = CRGB::Green;
   FastLED.show();
   delay(500);
   leds[0] = CRGB::Black;
   FastLED.show();
-  
-  // Print IP address to Serial Monitor (optional, if you have it open)
-  Serial.begin(115200);
-  Serial.println("");
-  Serial.print("Connected to ");
+
+  // Print IP address
+  Serial.println("\n\n*** WiFi Connected! ***");
+  Serial.print("Connected to: ");
   Serial.println(ssid);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
