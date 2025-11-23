@@ -14,11 +14,20 @@
 
   // Mock millis() for simulator
   #include <chrono>
-inline unsigned long millis() {
-  static auto start = std::chrono::steady_clock::now();
-  auto now = std::chrono::steady_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-}
+  #ifdef SIM_WASM
+    extern unsigned long (*sim_millis_fn)();
+  #endif
+
+  inline unsigned long millis() {
+  #ifdef SIM_WASM
+    if (sim_millis_fn) {
+      return sim_millis_fn();
+    }
+  #endif
+    static auto start = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+  }
 
 // Timer helpers (lightweight stand-ins for FastLED EVERY_N_* macros)
 #ifndef EVERY_N_MILLISECONDS
