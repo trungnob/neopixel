@@ -164,8 +164,8 @@
     const GRID_HEIGHT = 9;
     const LED_SPACING_H = 6.9;   // mm between LEDs horizontally
     const LED_SPACING_V = 50.0;  // mm between strips vertically
-    const ASPECT = LED_SPACING_V / LED_SPACING_H; // vertical:horizontal scale
-    const SCALE = 4; // pixels per LED horizontally; adjusts display size only
+    const LED_SIZE = 4;          // display pixels per LED
+    const GAP_PX = Math.round(((LED_SPACING_V - LED_SPACING_H) / LED_SPACING_H) * LED_SIZE); // visual gap between strips
 
     const patterns = [
       { id: 100, name: 'Horizontal Bars' },
@@ -194,18 +194,12 @@
 
     const $ = (id) => document.getElementById(id);
     const canvas = $('canvas');
-    canvas.width = GRID_WIDTH;
-    canvas.height = Math.round(GRID_HEIGHT * ASPECT);
-    canvas.style.width = `${GRID_WIDTH * SCALE}px`;
-    canvas.style.height = `${Math.round(GRID_HEIGHT * ASPECT * SCALE)}px`;
+    canvas.width = GRID_WIDTH * LED_SIZE;
+    canvas.height = GRID_HEIGHT * LED_SIZE + (GRID_HEIGHT - 1) * GAP_PX;
+    canvas.style.width = `${canvas.width}px`;
+    canvas.style.height = `${canvas.height}px`;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-
-    const bufCanvas = document.createElement('canvas');
-    bufCanvas.width = GRID_WIDTH;
-    bufCanvas.height = GRID_HEIGHT;
-    const bufCtx = bufCanvas.getContext('2d');
-    const img = bufCtx.createImageData(GRID_WIDTH, GRID_HEIGHT);
     const patternSelect = $('pattern-select');
     const patternIdLabel = $('pattern-id');
     const fpsLabel = $('fps');
@@ -242,16 +236,18 @@
         const ptr = sim._sim_get_buffer();
         const len = sim._sim_get_buffer_length();
         const buf = sim.HEAPU8.subarray(ptr, ptr + len);
+        const ledCount = len / 3;
 
-        for (let i = 0, j = 0; i < len; i += 3, j += 4) {
-          img.data[j] = buf[i];
-          img.data[j + 1] = buf[i + 1];
-          img.data[j + 2] = buf[i + 2];
-          img.data[j + 3] = 255;
-        }
-        bufCtx.putImageData(img, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(bufCanvas, 0, 0, canvas.width, canvas.height);
+        for (let led = 0, off = 0; led < ledCount; led++, off += 3) {
+          const row = Math.floor(led / GRID_WIDTH);
+          const colInRow = led % GRID_WIDTH;
+          const xIdx = (row % 2 === 0) ? colInRow : (GRID_WIDTH - 1 - colInRow); // zigzag wiring
+          const x = xIdx * LED_SIZE;
+          const y = row * (LED_SIZE + GAP_PX);
+          ctx.fillStyle = `rgb(${buf[off]},${buf[off + 1]},${buf[off + 2]})`;
+          ctx.fillRect(x, y, LED_SIZE, LED_SIZE);
+        }
         updateFps(now);
       }
       requestAnimationFrame(renderFrame);
