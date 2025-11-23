@@ -241,9 +241,8 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (let led = 0, off = 0; led < ledCount; led++, off += 3) {
           const row = Math.floor(led / GRID_WIDTH);
-          const colInRow = led % GRID_WIDTH;
-          const xIdx = (row % 2 === 0) ? colInRow : (GRID_WIDTH - 1 - colInRow); // zigzag wiring
-          const x = xIdx * LED_SIZE;
+          const col = led % GRID_WIDTH;
+          const x = col * LED_SIZE;
           const y = row * (LED_SIZE + GAP_PX);
           ctx.fillStyle = `rgb(${buf[off]},${buf[off + 1]},${buf[off + 2]})`;
           ctx.fillRect(x, y, LED_SIZE, LED_SIZE);
