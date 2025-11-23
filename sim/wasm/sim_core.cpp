@@ -17,6 +17,11 @@ static uint8_t hue = 0;
 static std::string scrollText = "HELLO WORLD";
 static int scrollOffset = 0;
 static int scrollSpeed = 80; // ms
+unsigned long (*sim_millis_fn)() = nullptr;
+static uint64_t sim_time_ms = 0;
+static unsigned long wasm_millis() {
+  return static_cast<unsigned long>(sim_time_ms);
+}
 
 static inline void clearTail() {
   if (activeLeds < MAX_LEDS) {
@@ -68,6 +73,8 @@ void sim_init(int width, int height) {
   } else {
     activeLeds = GRID_WIDTH * GRID_HEIGHT;
   }
+  sim_time_ms = 0;
+  sim_millis_fn = wasm_millis;
   clearTail();
 }
 
@@ -88,8 +95,9 @@ void sim_seed(uint32_t seed) {
   srand(seed);
 }
 
-// Run one frame; delta_ms is currently unused because the pattern code uses millis() internally.
-void sim_step(uint32_t /*delta_ms*/) {
+// Run one frame; advance simulated millis by delta (fallback to ~60 FPS if delta is 0).
+void sim_step(uint32_t delta_ms) {
+  sim_time_ms += (delta_ms > 0) ? delta_ms : 16;
   runPattern();
 }
 

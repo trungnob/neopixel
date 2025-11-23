@@ -161,6 +161,12 @@
   <script type="module">
     import createSim from '../../artifacts/simulator/sim-core.js';
 
+    const GRID_WIDTH = 144;
+    const GRID_HEIGHT = 9;
+    const LED_SPACING_H = 6.9;
+    const LED_SPACING_V = 50.0;
+    const ASPECT = LED_SPACING_V / LED_SPACING_H; // vertical:horizontal scale
+
     const patterns = [
       { id: 100, name: 'Horizontal Bars' },
       { id: 101, name: 'Vertical Ripple' },
@@ -188,8 +194,16 @@
 
     const $ = (id) => document.getElementById(id);
     const canvas = $('canvas');
+    canvas.width = GRID_WIDTH;
+    canvas.height = Math.round(GRID_HEIGHT * ASPECT);
     const ctx = canvas.getContext('2d');
-    const img = ctx.createImageData(canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = false;
+
+    const bufCanvas = document.createElement('canvas');
+    bufCanvas.width = GRID_WIDTH;
+    bufCanvas.height = GRID_HEIGHT;
+    const bufCtx = bufCanvas.getContext('2d');
+    const img = bufCtx.createImageData(GRID_WIDTH, GRID_HEIGHT);
     const patternSelect = $('pattern-select');
     const patternIdLabel = $('pattern-id');
     const fpsLabel = $('fps');
@@ -233,7 +247,9 @@
           img.data[j + 2] = buf[i + 2];
           img.data[j + 3] = 255;
         }
-        ctx.putImageData(img, 0, 0);
+        bufCtx.putImageData(img, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bufCanvas, 0, 0, canvas.width, canvas.height);
         updateFps(now);
       }
       requestAnimationFrame(renderFrame);
@@ -252,7 +268,7 @@
 
     async function main() {
       sim = await createSim();
-      sim._sim_init(144, 9);
+      sim._sim_init(GRID_WIDTH, GRID_HEIGHT);
       sim._sim_seed(Date.now() & 0xffffffff);
 
       patterns.forEach((p) => {
