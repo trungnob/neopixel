@@ -82,9 +82,8 @@
       border: 1px solid rgba(255,255,255,0.08);
       image-rendering: pixelated;
       background: #1b1f2c;
-      width: 100%;
+      max-width: 100%;
       height: auto;
-      aspect-ratio: 16 / 1.8;
     }
     .stats {
       display: flex;
@@ -163,9 +162,10 @@
 
     const GRID_WIDTH = 144;
     const GRID_HEIGHT = 9;
-    const LED_SPACING_H = 6.9;
-    const LED_SPACING_V = 50.0;
+    const LED_SPACING_H = 6.9;   // mm between LEDs horizontally
+    const LED_SPACING_V = 50.0;  // mm between strips vertically
     const ASPECT = LED_SPACING_V / LED_SPACING_H; // vertical:horizontal scale
+    const SCALE = 4; // pixels per LED horizontally; adjusts display size only
 
     const patterns = [
       { id: 100, name: 'Horizontal Bars' },
@@ -196,6 +196,8 @@
     const canvas = $('canvas');
     canvas.width = GRID_WIDTH;
     canvas.height = Math.round(GRID_HEIGHT * ASPECT);
+    canvas.style.width = `${GRID_WIDTH * SCALE}px`;
+    canvas.style.height = `${Math.round(GRID_HEIGHT * ASPECT * SCALE)}px`;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
