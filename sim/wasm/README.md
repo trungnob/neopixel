@@ -34,3 +34,10 @@ If `emcc` is missing the script will fail with a helpful message.
 ## Minimal UI
 - `sim/wasm/index.html` is a static viewer for patterns 100–120. Serve the repo (e.g. `python3 -m http.server 8000`) and open `http://localhost:8000/sim/wasm/index.html`.
 - Controls: pattern select, play/pause/step, seed randomizer, text + scroll speed for pattern 120, FPS readout. Canvas uses `sim-core.js/wasm` directly (no bundler needed).
+
+## Adding / tweaking patterns
+- Patterns live under `src/patterns/` and are exposed via `pattern_*.cpp` plus declarations in `src/patterns.h`.
+- To light a single LED at `(x, y)`: `int idx = XY(x, y); if (idx >= 0 && idx < activeLeds) leds[idx] = CRGB::Red;`.
+- To cycle color over time: use the shared `hue` reference, e.g. `leds[idx] = CHSV(hue, 255, 255); hue++;`.
+- Clear pixels explicitly when you want only specific LEDs on: `fill_solid(leds, activeLeds, CRGB::Black);` before setting your pixels.
+- After adding a pattern, re-run `make build` (firmware) and `make sim-build-wasm` (simulator) to see it in the UI.
