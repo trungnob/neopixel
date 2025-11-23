@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LED Text Simulator - 144×9 Grid</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00ffff;
+    }
+
+    .info {
+      background: #2a2a2a;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .controls input[type="text"] {
+      width: 300px;
+      padding: 10px;
+      font-size: 16px;
+      border: 2px solid #00ffff;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 4px;
+    }
+
+    .controls input[type="range"] {
+      width: 200px;
+      margin: 0 10px;
+    }
+
+    .controls button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #00ffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    .controls button:hover {
+      background: #00cccc;
+    }
+
+    .controls label {
+      display: inline-block;
+      margin: 10px 20px 10px 0;
+    }
+
+    #canvas-container {
+      background: #000;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .stats {
+      margin-top: 10px;
+      color: #888;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 LED Text Simulator</h1>
+
+    <div class="info">
+      <strong>Display Specs:</strong> 144 LEDs × 9 strips |
+      <strong>Physical Size:</strong> 1000mm × 450mm |
+      <strong>LED Spacing:</strong> 6.94mm (H) × 50mm (V) |
+      <strong>Aspect Ratio:</strong> 7.2:1
+    </div>
+
+    <div class="controls">
+      <label>
+        <strong>Text:</strong>
+        <input type="text" id="textInput" value="HELLO WORLD" maxlength="20">
+      </label>
+
+      <label>
+        <strong>Scale X:</strong>
+        <input type="range" id="scaleX" min="1" max="15" value="7">
+        <span id="scaleXValue">7</span>
+      </label>
+
+      <label>
+        <strong>Scale Y:</strong>
+        <input type="range" id="scaleY" min="1" max="5" value="1">
+        <span id="scaleYValue">1</span>
+      </label>
+
+      <label>
+        <strong>Spacing:</strong>
+        <input type="range" id="spacing" min="0" max="20" value="5">
+        <span id="spacingValue">5</span>
+      </label>
+
+      <label>
+        <strong>Speed:</strong>
+        <input type="range" id="speed" min="10" max="200" value="60">
+        <span id="speedValue">60</span> ms/frame
+      </label>
+
+      <button onclick="updatePreview()">Update Preview</button>
+      <button onclick="startAnimation()">Animate</button>
+      <button onclick="stopAnimation()">Stop</button>
+    </div>
+
+    <div id="canvas-container">
+      <canvas id="ledCanvas"></canvas>
+      <div class="stats" id="stats"></div>
+    </div>
+  </div>
+
+  <script>
+    const GRID_WIDTH = 144;
+    const GRID_HEIGHT = 9;
+    const LED_SIZE = 8; // pixels per LED on screen
+
+    const canvas = document.getElementById('ledCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = GRID_WIDTH * LED_SIZE;
+    canvas.height = GRID_HEIGHT * LED_SIZE;
+
+    let scrollOffset = 0;
+    let animationId = null;
+    let hue = 0;
+
+    // 5x7 Font (same as ESP8266)
+    const font5x7 = [
+      [0x7E, 0x11, 0x11, 0x11, 0x7E], // A
+      [0x7F, 0x49, 0x49, 0x49, 0x36], // B
+      [0x3E, 0x41, 0x41, 0x41, 0x22], // C
+      [0x7F, 0x41, 0x41, 0x22, 0x1C], // D
+      [0x7F, 0x49, 0x49, 0x49, 0x41], // E
+      [0x7F, 0x09, 0x09, 0x09, 0x01], // F
+      [0x3E, 0x41, 0x49, 0x49, 0x7A], // G
+      [0x7F, 0x08, 0x08, 0x08, 0x7F], // H
+      [0x00, 0x41, 0x7F, 0x41, 0x00], // I
+      [0x20, 0x40, 0x41, 0x3F, 0x01], // J
+      [0x7F, 0x08, 0x14, 0x22, 0x41], // K
+      [0x7F, 0x40, 0x40, 0x40, 0x40], // L
+      [0x7F, 0x02, 0x0C, 0x02, 0x7F], // M
+      [0x7F, 0x04, 0x08, 0x10, 0x7F], // N
+      [0x3E, 0x41, 0x41, 0x41, 0x3E], // O
+      [0x7F, 0x09, 0x09, 0x09, 0x06], // P
+      [0x3E, 0x41, 0x51, 0x21, 0x5E], // Q
+      [0x7F, 0x09, 0x19, 0x29, 0x46], // R
+      [0x46, 0x49, 0x49, 0x49, 0x31], // S
+      [0x01, 0x01, 0x7F, 0x01, 0x01], // T
+      [0x3F, 0x40, 0x40, 0x40, 0x3F], // U
+      [0x1F, 0x20, 0x40, 0x20, 0x1F], // V
+      [0x3F, 0x40, 0x38, 0x40, 0x3F], // W
+      [0x63, 0x14, 0x08, 0x14, 0x63], // X
+      [0x07, 0x08, 0x70, 0x08, 0x07], // Y
+      [0x61, 0x51, 0x49, 0x45, 0x43], // Z
+      [0x3E, 0x51, 0x49, 0x45, 0x3E], // 0
+      [0x00, 0x42, 0x7F, 0x40, 0x00], // 1
+      [0x42, 0x61, 0x51, 0x49, 0x46], // 2
+      [0x21, 0x41, 0x45, 0x4B, 0x31], // 3
+      [0x18, 0x14, 0x12, 0x7F, 0x10], // 4
+      [0x27, 0x45, 0x45, 0x45, 0x39], // 5
+      [0x3C, 0x4A, 0x49, 0x49, 0x30], // 6
+      [0x01, 0x71, 0x09, 0x05, 0x03], // 7
+      [0x36, 0x49, 0x49, 0x49, 0x36], // 8
+      [0x06, 0x49, 0x49, 0x29, 0x1E], // 9
+      [0x00, 0x00, 0x00, 0x00, 0x00], // space
+      [0x00, 0x00, 0x5F, 0x00, 0x00], // !
+      [0x00, 0x60, 0x60, 0x00, 0x00], // .
+      [0x08, 0x08, 0x08, 0x08, 0x08], // -
+    ];
+
+    function getFontIndex(c) {
+      if (c >= 'A' && c <= 'Z') return c.charCodeAt(0) - 'A'.charCodeAt(0);
+      if (c >= 'a' && c <= 'z') return c.charCodeAt(0) - 'a'.charCodeAt(0);
+      if (c >= '0' && c <= '9') return 26 + (c.charCodeAt(0) - '0'.charCodeAt(0));
+      if (c === ' ') return 36;
+      if (c === '!') return 37;
+      if (c === '.') return 38;
+      if (c === '-') return 39;
+      return 36;
+    }
+
+    // Zigzag XY mapping
+    function XY(x, y) {
+      if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return -1;
+
+      if (y % 2 === 0) {
+        return y * GRID_WIDTH + x;
+      } else {
+        return y * GRID_WIDTH + (GRID_WIDTH - 1 - x);
+      }
+    }
+
+    function HSVtoRGB(h, s, v) {
+      h = h / 255.0;
+      s = s / 255.0;
+      v = v / 255.0;
+
+      let r, g, b;
+      let i = Math.floor(h * 6);
+      let f = h * 6 - i;
+      let p = v * (1 - s);
+      let q = v * (1 - f * s);
+      let t = v * (1 - (1 - f) * s);
+
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+
+      return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+      };
+    }
+
+    function render() {
+      const text = document.getElementById('textInput').value.toUpperCase();
+      const scaleX = parseInt(document.getElementById('scaleX').value);
+      const scaleY = parseInt(document.getElementById('scaleY').value);
+      const charSpacing = parseInt(document.getElementById('spacing').value);
+
+      // Clear canvas
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const FONT_WIDTH = 5;
+      const FONT_HEIGHT = 7;
+
+      const scaledFontWidth = FONT_WIDTH * scaleX;
+      const charWidth = scaledFontWidth + charSpacing;
+      const textWidth = text.length * charWidth;
+
+      // Draw each character
+      for (let charIdx = 0; charIdx < text.length; charIdx++) {
+        const c = text[charIdx];
+        const fontIdx = getFontIndex(c);
+        const charX = GRID_WIDTH + charIdx * charWidth - scrollOffset;
+
+        if (charX < GRID_WIDTH && charX + scaledFontWidth > 0) {
+          for (let col = 0; col < FONT_WIDTH; col++) {
+            const columnData = font5x7[fontIdx][col];
+
+            for (let row = 0; row < FONT_HEIGHT; row++) {
+              if (columnData & (1 << row)) {
+                for (let dy = 0; dy < scaleY; dy++) {
+                  for (let dx = 0; dx < scaleX; dx++) {
+                    const y = row * scaleY + dy + 1;
+                    const x = charX + col * scaleX + dx;
+
+                    if (y >= 0 && y < GRID_HEIGHT && x >= 0 && x < GRID_WIDTH) {
+                      const rgb = HSVtoRGB(hue, 255, 255);
+                      ctx.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+                      ctx.fillRect(x * LED_SIZE, y * LED_SIZE, LED_SIZE, LED_SIZE);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Draw grid
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= GRID_WIDTH; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * LED_SIZE, 0);
+        ctx.lineTo(x * LED_SIZE, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= GRID_HEIGHT; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * LED_SIZE);
+        ctx.lineTo(canvas.width, y * LED_SIZE);
+        ctx.stroke();
+      }
+
+      // Update stats
+      const physicalWidth = scaledFontWidth * 6.94;
+      const physicalHeight = FONT_HEIGHT * scaleY * 50;
+      document.getElementById('stats').innerHTML =
+        `Character size: ${scaledFontWidth}×${FONT_HEIGHT * scaleY} LEDs | ` +
+        `Physical: ~${physicalWidth.toFixed(0)}mm × ${physicalHeight.toFixed(0)}mm | ` +
+        `Text width: ${textWidth} LEDs`;
+    }
+
+    function updatePreview() {
+      scrollOffset = 0;
+      render();
+    }
+
+    function startAnimation() {
+      if (animationId) return;
+
+      let lastTime = 0;
+
+      function animate(currentTime) {
+        const speed = parseInt(document.getElementById('speed').value);
+
+        if (currentTime - lastTime >= speed) {
+          scrollOffset++;
+          const text = document.getElementById('textInput').value.toUpperCase();
+          const scaleX = parseInt(document.getElementById('scaleX').value);
+          const charSpacing = parseInt(document.getElementById('spacing').value);
+          const charWidth = (5 * scaleX) + charSpacing;
+          const textWidth = text.length * charWidth;
+
+          if (scrollOffset > GRID_WIDTH + textWidth) {
+            scrollOffset = 0;
+          }
+
+          hue = (hue + 1) % 256;
+          render();
+          lastTime = currentTime;
+        }
+
+        animationId = requestAnimationFrame(animate);
+      }
+
+      animationId = requestAnimationFrame(animate);
+    }
+
+    function stopAnimation() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    }
+
+    // Event listeners
+    document.getElementById('scaleX').addEventListener('input', (e) => {
+      document.getElementById('scaleXValue').textContent = e.target.value;
+      updatePreview();
+    });
+
+    document.getElementById('scaleY').addEventListener('input', (e) => {
+      document.getElementById('scaleYValue').textContent = e.target.value;
+      updatePreview();
+    });
+
+    document.getElementById('spacing').addEventListener('input', (e) => {
+      document.getElementById('spacingValue').textContent = e.target.value;
+      updatePreview();
+    });
+
+    document.getElementById('speed').addEventListener('input', (e) => {
+      document.getElementById('speedValue').textContent = e.target.value;
+    });
+
+    document.getElementById('textInput').addEventListener('input', updatePreview);
+
+    // Initial render
+    updatePreview();
+  </script>
+</body>
+</html>

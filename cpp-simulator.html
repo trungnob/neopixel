@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>C++ Pattern Simulator - Using main.cpp</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      height: 100vh;
+    }
+
+    .left-panel {
+      width: 30%;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .right-panel {
+      width: 70%;
+      padding: 10px;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+      color: #00ffff;
+    }
+
+    .info {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+
+    .controls button {
+      padding: 8px 16px;
+      margin: 5px 5px 5px 0;
+      background: #00ffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .controls button:hover { background: #00cccc; }
+    .controls button.active {
+      background: #ff00ff;
+    }
+
+    .pattern-list {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .pattern-item {
+      padding: 5px;
+      margin: 2px 0;
+      background: #1a1a1a;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .pattern-item:hover {
+      background: #333;
+    }
+
+    .pattern-item.active {
+      background: #00ffff;
+      color: #000;
+      font-weight: bold;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      background: #2b2318;
+      display: block;
+      margin: 0 auto;
+      image-rendering: pixelated;
+    }
+
+    .stats {
+      color: #888;
+      font-size: 12px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .loading {
+      color: #00ffff;
+      text-align: center;
+      padding: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 5px 0;
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="left-panel">
+    <h1>🎨 C++ Simulator</h1>
+
+    <div class="info">
+      <strong>Source:</strong> main.cpp (live)<br>
+      <strong>Grid:</strong> 144×9 LEDs<br>
+      <strong>Wiring:</strong> Zigzag
+    </div>
+
+    <div class="controls">
+      <button onclick="toggleAnimation()">▶ Play / ⏸ Pause</button>
+      <button onclick="stepFrame()">⏭ Step</button>
+      <button onclick="resetPattern()">🔄 Reset</button>
+
+      <label>
+        FPS: <span id="fpsValue">30</span>
+        <input type="range" id="fpsSlider" min="1" max="60" value="30"
+               oninput="updateFPS(this.value)">
+      </label>
+
+      <label>
+        Brightness: <span id="brightnessValue">255</span>
+        <input type="range" id="brightnessSlider" min="10" max="255" value="255"
+               oninput="updateBrightness(this.value)">
+      </label>
+    </div>
+
+    <div class="pattern-list" id="patternList">
+      <div class="loading">Loading patterns from main.cpp...</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <canvas id="ledCanvas"></canvas>
+    <div class="stats" id="stats">Initializing...</div>
+  </div>
+
+  <script>
+    // ===== Configuration =====
+    const GRID_WIDTH = 144;
+    const GRID_HEIGHT = 9;
+    const STRIP_LENGTH_MM = 1000;
+    const STRIP_SPACING_MM = 50;
+    const LED_SPACING_H_MM = 1000 / 144;
+    const LED_SIZE_MM = 5;
+    const SCALE = 0.8;
+    const MARGIN_X = 40;
+    const MARGIN_Y = 40;
+
+    const canvas = document.getElementById('ledCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const ledGridWidth = STRIP_LENGTH_MM * SCALE;
+    const ledGridHeight = (GRID_HEIGHT - 1) * STRIP_SPACING_MM * SCALE;
+    canvas.width = ledGridWidth + (MARGIN_X * 2);
+    canvas.height = ledGridHeight + (MARGIN_Y * 2);
+
+    const LED_DISPLAY_SIZE = LED_SIZE_MM * SCALE;
+
+    // ===== LED State =====
+    let leds = new Array(GRID_WIDTH * GRID_HEIGHT);
+    for(let i = 0; i < leds.length; i++) {
+      leds[i] = {r: 0, g: 0, b: 0};
+    }
+
+    let hue = 0;
+    let animationId = null;
+    let currentPattern = 100;
+    let frameCount = 0;
+    let startTime = Date.now();
+    let fps = 30;
+    let brightness = 255;
+    let activeLeds = GRID_WIDTH * GRID_HEIGHT;
+
+    // Pattern-specific variables
+    let scrollOffset = 0;
+    let scrollSpeed = 80;
+    let gameOfLifeGrid = new Array(GRID_WIDTH * GRID_HEIGHT).fill(0);
+    let heat = new Array(GRID_WIDTH * GRID_HEIGHT).fill(0);
+
+    // ===== FastLED Emulation =====
+
+    function XY(x, y) {
+      if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return -1;
+      if (y % 2 === 0) {
+        return y * GRID_WIDTH + x;
+      } else {
+        return y * GRID_WIDTH + (GRID_WIDTH - 1 - x);
+      }
+    }
+
+    function CHSV(h, s, v) {
+      return HSVtoRGB(h, s, v);
+    }
+
+    function CRGB(r, g, b) {
+      if (typeof r === 'object') return r;
+      return {r: r || 0, g: g || 0, b: b || 0};
+    }
+
+    const CRGBColors = {
+      Black: {r: 0, g: 0, b: 0},
+      Red: {r: 255, g: 0, b: 0},
+      Green: {r: 0, g: 255, b: 0},
+      Blue: {r: 0, g: 0, b: 255},
+      Yellow: {r: 255, g: 255, b: 0},
+      Orange: {r: 255, g: 165, b: 0},
+      Purple: {r: 128, g: 0, b: 128},
+      Cyan: {r: 0, g: 255, b: 255},
+      Magenta: {r: 255, g: 0, b: 255},
+      White: {r: 255, g: 255, b: 255}
+    };
+
+    function HSVtoRGB(h, s, v) {
+      h = h / 255.0;
+      s = s / 255.0;
+      v = v / 255.0;
+
+      let r, g, b;
+      let i = Math.floor(h * 6);
+      let f = h * 6 - i;
+      let p = v * (1 - s);
+      let q = v * (1 - f * s);
+      let t = v * (1 - (1 - f) * s);
+
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+
+      return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+      };
+    }
+
+    function HeatColor(temp) {
+      let t192 = Math.round((temp / 255.0) * 191);
+      let heatramp = t192 & 0x3F;
+      heatramp <<= 2;
+
+      if (t192 & 0x80) {
+        return {r: 255, g: 255, b: heatramp};
+      } else if (t192 & 0x40) {
+        return {r: 255, g: heatramp, b: 0};
+      } else {
+        return {r: heatramp, g: 0, b: 0};
+      }
+    }
+
+    function sin8(x) {
+      return Math.round((Math.sin(x * Math.PI / 128) + 1) * 127.5);
+    }
+
+    function cos8(x) {
+      return Math.round((Math.cos(x * Math.PI / 128) + 1) * 127.5);
+    }
+
+    function beatsin8(bpm, min_val, max_val, offset, phase) {
+      min_val = min_val || 0;
+      max_val = max_val || 255;
+      offset = offset || 0;
+      phase = phase || 0;
+
+      let beat = (Date.now() * bpm / 60000.0) + phase / 255.0;
+      let val = (Math.sin(beat * 2 * Math.PI) + 1) * 0.5;
+      return Math.round(min_val + val * (max_val - min_val));
+    }
+
+    function beatsin16(bpm, min_val, max_val, offset, phase) {
+      return beatsin8(bpm, min_val, max_val, offset, phase);
+    }
+
+    function random8(min, max) {
+      if (max === undefined) {
+        max = min || 255;
+        min = 0;
+      }
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function random16(max) {
+      max = max || 65535;
+      return Math.floor(Math.random() * (max + 1));
+    }
+
+    function inoise8(x, y, z) {
+      const p = Math.sin(x * 0.01) * Math.cos(y * 0.01) * Math.sin((z || 0) * 0.01);
+      return Math.round(((p + 1) * 0.5) * 255);
+    }
+
+    function fill_solid(arr, count, color) {
+      if (typeof count === 'object') {
+        color = count;
+        count = arr.length;
+      }
+      for(let i = 0; i < count; i++) {
+        arr[i] = {...color};
+      }
+    }
+
+    function fadeToBlackBy(arr, count, amount) {
+      for(let i = 0; i < count; i++) {
+        arr[i].r = Math.max(0, arr[i].r - amount);
+        arr[i].g = Math.max(0, arr[i].g - amount);
+        arr[i].b = Math.max(0, arr[i].b - amount);
+      }
+    }
+
+    function qsub8(a, b) {
+      return Math.max(0, a - b);
+    }
+
+    function qadd8(a, b) {
+      return Math.min(255, a + b);
+    }
+
+    function blur1d(arr, count, amount) {
+      // Simple blur - not perfect but close enough
+      for(let i = 1; i < count - 1; i++) {
+        arr[i].r = (arr[i-1].r + arr[i].r + arr[i+1].r) / 3;
+        arr[i].g = (arr[i-1].g + arr[i].g + arr[i+1].g) / 3;
+        arr[i].b = (arr[i-1].b + arr[i].b + arr[i+1].b) / 3;
+      }
+    }
+
+    let millis = () => Date.now();
+
+    // ===== Render Function =====
+
+    function render() {
+      // Cardboard background
+      ctx.fillStyle = '#2b2318';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // LED grid background
+      ctx.fillStyle = '#000';
+      ctx.fillRect(MARGIN_X - 5, MARGIN_Y - 5, ledGridWidth + 10, ledGridHeight + 10);
+
+      // Strip backgrounds
+      ctx.fillStyle = '#1a1a1a';
+      for(let y = 0; y < GRID_HEIGHT; y++) {
+        const stripY = MARGIN_Y + (y * STRIP_SPACING_MM * SCALE);
+        ctx.fillRect(MARGIN_X - 5, stripY - 2, ledGridWidth + 10, LED_SIZE_MM * SCALE + 4);
+      }
+
+      // Draw LEDs
+      for(let y = 0; y < GRID_HEIGHT; y++) {
+        for(let x = 0; x < GRID_WIDTH; x++) {
+          const led = XY(x, y);
+          if (led >= 0 && led < leds.length) {
+            let color = leds[led];
+
+            // Apply brightness
+            color = {
+              r: Math.round(color.r * brightness / 255),
+              g: Math.round(color.g * brightness / 255),
+              b: Math.round(color.b * brightness / 255)
+            };
+
+            const ledX = MARGIN_X + (x * LED_SPACING_H_MM) * SCALE;
+            const ledY = MARGIN_Y + (y * STRIP_SPACING_MM) * SCALE;
+
+            const bright = (color.r + color.g + color.b) / 3;
+
+            if (bright > 10) {
+              // Glow effect
+              const gradient = ctx.createRadialGradient(
+                ledX, ledY, 0,
+                ledX, ledY, LED_DISPLAY_SIZE * 2
+              );
+              gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0.8)`);
+              gradient.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, 0.4)`);
+              gradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+
+              ctx.fillStyle = gradient;
+              ctx.beginPath();
+              ctx.arc(ledX, ledY, LED_DISPLAY_SIZE * 2, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // LED core
+            ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            ctx.beginPath();
+            ctx.arc(ledX, ledY, LED_DISPLAY_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (bright < 10) {
+              ctx.strokeStyle = '#333';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // Measurement guides
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 2]);
+
+      for(let x = 0; x <= STRIP_LENGTH_MM; x += 100) {
+        const px = MARGIN_X + (x * SCALE);
+        ctx.beginPath();
+        ctx.moveTo(px, MARGIN_Y);
+        ctx.lineTo(px, MARGIN_Y + ledGridHeight);
+        ctx.stroke();
+      }
+
+      for(let y = 0; y < GRID_HEIGHT; y++) {
+        const py = MARGIN_Y + (y * STRIP_SPACING_MM * SCALE);
+        ctx.beginPath();
+        ctx.moveTo(MARGIN_X, py);
+        ctx.lineTo(MARGIN_X + ledGridWidth, py);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+    }
+
+    // ===== Load and Parse main.cpp =====
+
+    let patterns = {};
+
+    async function loadMainCpp() {
+      try {
+        const response = await fetch('src/main.cpp');
+        const code = await response.text();
+
+        // Parse 2D patterns (100-120)
+        const caseRegex = /case\s+(\d+):\s*\/\/\s*(.+?)[\r\n]/g;
+        let match;
+
+        while ((match = caseRegex.exec(code)) !== null) {
+          const caseNum = parseInt(match[1]);
+          const description = match[2].trim();
+
+          if (caseNum >= 100) {
+            patterns[caseNum] = {
+              number: caseNum,
+              name: description,
+              code: null
+            };
+          }
+        }
+
+        displayPatternList();
+        document.getElementById('stats').textContent = `Loaded ${Object.keys(patterns).length} patterns from main.cpp`;
+
+        return true;
+      } catch (error) {
+        console.error('Failed to load main.cpp:', error);
+        document.getElementById('patternList').innerHTML =
+          '<div style="color: #ff0000;">Failed to load main.cpp. Make sure the file is accessible.</div>';
+        return false;
+      }
+    }
+
+    function displayPatternList() {
+      const list = document.getElementById('patternList');
+      list.innerHTML = '';
+
+      const sortedPatterns = Object.values(patterns).sort((a, b) => a.number - b.number);
+
+      sortedPatterns.forEach(pattern => {
+        const div = document.createElement('div');
+        div.className = 'pattern-item';
+        if (pattern.number === currentPattern) div.classList.add('active');
+        div.textContent = `${pattern.number}: ${pattern.name}`;
+        div.onclick = () => selectPattern(pattern.number);
+        list.appendChild(div);
+      });
+    }
+
+    function selectPattern(num) {
+      currentPattern = num;
+      resetPattern();
+      displayPatternList();
+    }
+
+    function resetPattern() {
+      hue = 0;
+      scrollOffset = 0;
+      frameCount = 0;
+      startTime = Date.now();
+      for(let i = 0; i < leds.length; i++) {
+        leds[i] = {r: 0, g: 0, b: 0};
+      }
+      gameOfLifeGrid.fill(Math.random() > 0.7 ? 1 : 0);
+      heat.fill(0);
+    }
+
+    // ===== Animation Control =====
+
+    function toggleAnimation() {
+      if (animationId) {
+        clearInterval(animationId);
+        animationId = null;
+      } else {
+        const interval = 1000 / fps;
+        animationId = setInterval(animate, interval);
+      }
+    }
+
+    function stepFrame() {
+      animate();
+    }
+
+    function updateFPS(value) {
+      fps = parseInt(value);
+      document.getElementById('fpsValue').textContent = fps;
+
+      if (animationId) {
+        clearInterval(animationId);
+        const interval = 1000 / fps;
+        animationId = setInterval(animate, interval);
+      }
+    }
+
+    function updateBrightness(value) {
+      brightness = parseInt(value);
+      document.getElementById('brightnessValue').textContent = brightness;
+      render();
+    }
+
+    function animate() {
+      // Run the actual pattern code from main.cpp
+      runPattern(currentPattern);
+      render();
+
+      frameCount++;
+      const elapsed = (Date.now() - startTime) / 1000;
+      const actualFPS = frameCount / elapsed;
+      document.getElementById('stats').textContent =
+        `Pattern ${currentPattern} | Frame: ${frameCount} | FPS: ${actualFPS.toFixed(1)} | Hue: ${hue}`;
+    }
+
+    // ===== Pattern Execution (Copied from main.cpp) =====
+    // This will be filled with actual pattern code
+
+    function runPattern(patternNum) {
+      // Include actual pattern implementations from main.cpp
+      // For now, including the key 2D patterns manually
+
+      switch(patternNum) {
+        ${PATTERN_CASES_PLACEHOLDER}
+      }
+    }
+
+    // ===== Initialize =====
+
+    async function init() {
+      await loadMainCpp();
+      render();
+
+      // Auto-start animation
+      toggleAnimation();
+    }
+
+    init();
+  </script>
+</body>
+</html>

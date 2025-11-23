@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Pattern Code Simulator - 144×9 Grid</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      height: 100vh;
+    }
+
+    .left-panel {
+      width: 50%;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .right-panel {
+      width: 50%;
+      padding: 10px;
+      background: #0a0a0a;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+      color: #00ffff;
+    }
+
+    .controls {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+
+    .controls button {
+      padding: 8px 16px;
+      margin-right: 10px;
+      background: #00ffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+    }
+
+    .controls button:hover { background: #00cccc; }
+    .controls button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    textarea {
+      width: 100%;
+      flex: 1;
+      background: #1a1a1a;
+      color: #0f0;
+      border: 2px solid #333;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      resize: none;
+      border-radius: 5px;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      background: #000;
+      display: block;
+      margin: 10px auto;
+      image-rendering: pixelated;
+    }
+
+    .info {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .error {
+      background: #ff0000;
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      display: none;
+    }
+
+    .stats {
+      color: #888;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .code-templates {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+
+    .code-templates select {
+      width: 100%;
+      padding: 8px;
+      background: #1a1a1a;
+      color: #fff;
+      border: 2px solid #00ffff;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="left-panel">
+    <h1>🎨 Pattern Code Simulator</h1>
+
+    <div class="info">
+      <strong>Grid:</strong> 144×9 LEDs (1296 total) |
+      <strong>Wiring:</strong> Zigzag (Serpentine) |
+      <strong>Spacing:</strong> 6.94mm (H) × 50mm (V)
+    </div>
+
+    <div class="code-templates">
+      <select id="templateSelect" onchange="loadTemplate()">
+        <option value="">-- Load Example Pattern --</option>
+        <option value="horizontal_bars">Horizontal Bars</option>
+        <option value="vertical_ripple">Vertical Ripple</option>
+        <option value="rain_drops">Rain Drops</option>
+        <option value="plasma">Plasma 2D</option>
+        <option value="scrolling_rainbow">Scrolling Rainbow</option>
+      </select>
+    </div>
+
+    <div class="controls">
+      <button onclick="runPattern()">▶ Run Pattern</button>
+      <button onclick="stopPattern()">⏸ Stop</button>
+      <button onclick="stepPattern()">⏭ Step</button>
+      <button onclick="clearCanvas()">🗑 Clear</button>
+      <label style="margin-left: 20px;">
+        FPS: <input type="number" id="fps" value="30" min="1" max="60" style="width: 50px;">
+      </label>
+    </div>
+
+    <div class="error" id="errorBox"></div>
+
+    <textarea id="codeInput" placeholder="Paste your pattern code here...
+Example:
+// Horizontal bars
+for(int y=0; y<GRID_HEIGHT; y++) {
+  uint8_t stripHue = (hue + y * 28) % 256;
+  for(int x=0; x<GRID_WIDTH; x++) {
+    int led = XY(x, y);
+    if (led >= 0) leds[led] = CHSV(stripHue, 255, 255);
+  }
+}
+hue++;
+"></textarea>
+
+    <div class="stats" id="stats">Ready</div>
+  </div>
+
+  <div class="right-panel">
+    <h1>LED Grid Preview</h1>
+    <canvas id="ledCanvas"></canvas>
+    <div class="stats" id="canvasStats"></div>
+  </div>
+
+  <script>
+    const GRID_WIDTH = 144;
+    const GRID_HEIGHT = 9;
+
+    // Physical dimensions in mm
+    const STRIP_LENGTH_MM = 1000;        // 1 meter
+    const STRIP_SPACING_MM = 50;         // 5cm between strips
+    const LED_SPACING_H_MM = 1000 / 144; // 6.94mm
+    const LED_SIZE_MM = 5;               // WS2812B LED is ~5mm
+
+    // Scale for display: 1px = 0.8mm (fits well on screen)
+    const SCALE = 0.8;
+
+    // Margins around the LED grid (in pixels)
+    const MARGIN_X = 40;
+    const MARGIN_Y = 40;
+
+    const canvas = document.getElementById('ledCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const ledGridWidth = STRIP_LENGTH_MM * SCALE;
+    const ledGridHeight = (GRID_HEIGHT - 1) * STRIP_SPACING_MM * SCALE;
+
+    canvas.width = ledGridWidth + (MARGIN_X * 2);
+    canvas.height = ledGridHeight + (MARGIN_Y * 2);
+
+    // LED visual size on canvas
+    const LED_DISPLAY_SIZE = LED_SIZE_MM * SCALE;
+
+    // LED state
+    let leds = new Array(GRID_WIDTH * GRID_HEIGHT);
+    let hue = 0;
+    let animationId = null;
+    let frameCount = 0;
+    let startTime = 0;
+
+    // Initialize LEDs
+    for(let i = 0; i < leds.length; i++) {
+      leds[i] = {r: 0, g: 0, b: 0};
+    }
+
+    // ===== FastLED Function Emulation =====
+
+    function XY(x, y) {
+      if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return -1;
+      if (y % 2 === 0) {
+        return y * GRID_WIDTH + x;
+      } else {
+        return y * GRID_WIDTH + (GRID_WIDTH - 1 - x);
+      }
+    }
+
+    function CHSV(h, s, v) {
+      return HSVtoRGB(h, s, v);
+    }
+
+    function CRGB(r, g, b) {
+      if (typeof r === 'object') return r;
+      return {r: r || 0, g: g || 0, b: b || 0};
+    }
+
+    // Predefined colors
+    const CRGBColors = {
+      Black: {r: 0, g: 0, b: 0},
+      Red: {r: 255, g: 0, b: 0},
+      Green: {r: 0, g: 255, b: 0},
+      Blue: {r: 0, g: 0, b: 255},
+      Yellow: {r: 255, g: 255, b: 0},
+      Cyan: {r: 0, g: 255, b: 255},
+      Magenta: {r: 255, g: 0, b: 255},
+      White: {r: 255, g: 255, b: 255}
+    };
+
+    function HSVtoRGB(h, s, v) {
+      h = h / 255.0;
+      s = s / 255.0;
+      v = v / 255.0;
+
+      let r, g, b;
+      let i = Math.floor(h * 6);
+      let f = h * 6 - i;
+      let p = v * (1 - s);
+      let q = v * (1 - f * s);
+      let t = v * (1 - (1 - f) * s);
+
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+
+      return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+      };
+    }
+
+    function HeatColor(temp) {
+      let t192 = Math.round((temp / 255.0) * 191);
+      let heatramp = t192 & 0x3F;
+      heatramp <<= 2;
+
+      if (t192 & 0x80) {
+        return {r: 255, g: 255, b: heatramp};
+      } else if (t192 & 0x40) {
+        return {r: 255, g: heatramp, b: 0};
+      } else {
+        return {r: heatramp, g: 0, b: 0};
+      }
+    }
+
+    function sin8(x) {
+      return Math.round((Math.sin(x * Math.PI / 128) + 1) * 127.5);
+    }
+
+    function cos8(x) {
+      return Math.round((Math.cos(x * Math.PI / 128) + 1) * 127.5);
+    }
+
+    function beatsin8(bpm, min_val, max_val, offset, phase) {
+      min_val = min_val || 0;
+      max_val = max_val || 255;
+      offset = offset || 0;
+      phase = phase || 0;
+
+      let beat = (Date.now() * bpm / 60000.0) + phase / 255.0;
+      let val = (Math.sin(beat * 2 * Math.PI) + 1) * 0.5;
+      return Math.round(min_val + val * (max_val - min_val));
+    }
+
+    function random8(min, max) {
+      if (max === undefined) {
+        max = min || 255;
+        min = 0;
+      }
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function random16(max) {
+      max = max || 65535;
+      return Math.floor(Math.random() * (max + 1));
+    }
+
+    function inoise8(x, y, z) {
+      // Simplified Perlin noise
+      const p = Math.sin(x * 0.01) * Math.cos(y * 0.01) * Math.sin((z || 0) * 0.01);
+      return Math.round(((p + 1) * 0.5) * 255);
+    }
+
+    function fill_solid(arr, start, end, color) {
+      if (typeof end !== 'object') {
+        color = end;
+        end = start;
+        start = 0;
+      }
+      for(let i = start; i < end; i++) {
+        arr[i] = {...color};
+      }
+    }
+
+    function fadeToBlackBy(arr, count, amount) {
+      for(let i = 0; i < count; i++) {
+        arr[i].r = Math.max(0, arr[i].r - amount);
+        arr[i].g = Math.max(0, arr[i].g - amount);
+        arr[i].b = Math.max(0, arr[i].b - amount);
+      }
+    }
+
+    function qsub8(a, b) {
+      return Math.max(0, a - b);
+    }
+
+    function qadd8(a, b) {
+      return Math.min(255, a + b);
+    }
+
+    // ===== Rendering =====
+
+    function render() {
+      // Cardboard background
+      ctx.fillStyle = '#2b2318';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add cardboard texture (subtle)
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      for(let i = 0; i < 50; i++) {
+        ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
+      }
+
+      // LED grid background (darker area where LEDs are mounted)
+      ctx.fillStyle = '#000';
+      ctx.fillRect(MARGIN_X - 5, MARGIN_Y - 5, ledGridWidth + 10, ledGridHeight + 10);
+
+      // Draw strip background (gray bars for each LED strip)
+      ctx.fillStyle = '#1a1a1a';
+      for(let y = 0; y < GRID_HEIGHT; y++) {
+        const stripY = MARGIN_Y + (y * STRIP_SPACING_MM * SCALE);
+        ctx.fillRect(MARGIN_X - 5, stripY - 2, ledGridWidth + 10, LED_SIZE_MM * SCALE + 4);
+      }
+
+      // Draw LEDs at physically accurate positions
+      for(let y = 0; y < GRID_HEIGHT; y++) {
+        for(let x = 0; x < GRID_WIDTH; x++) {
+          const led = XY(x, y);
+          if (led >= 0 && led < leds.length) {
+            const color = leds[led];
+
+            // Calculate physical position in mm, then scale to pixels, then add margin
+            const ledX = MARGIN_X + (x * LED_SPACING_H_MM) * SCALE;
+            const ledY = MARGIN_Y + (y * STRIP_SPACING_MM) * SCALE;
+
+            // Draw LED as circle with glow effect if lit
+            const brightness = (color.r + color.g + color.b) / 3;
+
+            if (brightness > 10) {
+              // Glow effect
+              const gradient = ctx.createRadialGradient(
+                ledX, ledY, 0,
+                ledX, ledY, LED_DISPLAY_SIZE * 2
+              );
+              gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0.8)`);
+              gradient.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, 0.4)`);
+              gradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+
+              ctx.fillStyle = gradient;
+              ctx.beginPath();
+              ctx.arc(ledX, ledY, LED_DISPLAY_SIZE * 2, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // LED core
+            ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            ctx.beginPath();
+            ctx.arc(ledX, ledY, LED_DISPLAY_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // LED outline (darker when off)
+            if (brightness < 10) {
+              ctx.strokeStyle = '#333';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // Draw measurement guides
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 2]);
+
+      // Horizontal guides every 100mm
+      for(let x = 0; x <= STRIP_LENGTH_MM; x += 100) {
+        const px = MARGIN_X + (x * SCALE);
+        ctx.beginPath();
+        ctx.moveTo(px, MARGIN_Y);
+        ctx.lineTo(px, MARGIN_Y + ledGridHeight);
+        ctx.stroke();
+      }
+
+      // Vertical guides for each strip
+      for(let y = 0; y < GRID_HEIGHT; y++) {
+        const py = MARGIN_Y + (y * STRIP_SPACING_MM * SCALE);
+        ctx.beginPath();
+        ctx.moveTo(MARGIN_X, py);
+        ctx.lineTo(MARGIN_X + ledGridWidth, py);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+
+      // Add dimension labels
+      ctx.font = '10px monospace';
+      ctx.fillStyle = '#888';
+
+      // Horizontal dimension (bottom)
+      ctx.fillText('1000mm (1m)', MARGIN_X + ledGridWidth / 2 - 40, canvas.height - 10);
+
+      // Vertical dimension (right)
+      ctx.save();
+      ctx.translate(canvas.width - 10, MARGIN_Y + ledGridHeight / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('450mm (9 strips × 50mm)', -50, 0);
+      ctx.restore();
+    }
+
+    // ===== Pattern Execution =====
+
+    function executePattern(code) {
+      try {
+        // Create safe execution context
+        const patternFunc = new Function('leds', 'hue', 'GRID_WIDTH', 'GRID_HEIGHT',
+          'XY', 'CHSV', 'CRGB', 'HeatColor', 'sin8', 'cos8', 'beatsin8',
+          'random8', 'random16', 'inoise8', 'fill_solid', 'fadeToBlackBy',
+          'qsub8', 'qadd8', 'Math',
+          code + '\nreturn hue;'
+        );
+
+        hue = patternFunc(
+          leds, hue, GRID_WIDTH, GRID_HEIGHT,
+          XY, CHSV, CRGB, HeatColor, sin8, cos8, beatsin8,
+          random8, random16, inoise8, fill_solid, fadeToBlackBy,
+          qsub8, qadd8, Math
+        );
+
+        render();
+        return true;
+      } catch (e) {
+        showError('Code Error: ' + e.message);
+        return false;
+      }
+    }
+
+    function runPattern() {
+      const code = document.getElementById('codeInput').value.trim();
+      if (!code) {
+        showError('Please enter pattern code');
+        return;
+      }
+
+      hideError();
+      stopPattern();
+
+      const fps = parseInt(document.getElementById('fps').value) || 30;
+      const interval = 1000 / fps;
+
+      startTime = Date.now();
+      frameCount = 0;
+
+      animationId = setInterval(() => {
+        executePattern(code);
+        frameCount++;
+        updateStats();
+      }, interval);
+
+      document.getElementById('stats').textContent = 'Running...';
+    }
+
+    function stopPattern() {
+      if (animationId) {
+        clearInterval(animationId);
+        animationId = null;
+        document.getElementById('stats').textContent = 'Stopped';
+      }
+    }
+
+    function stepPattern() {
+      const code = document.getElementById('codeInput').value.trim();
+      if (!code) {
+        showError('Please enter pattern code');
+        return;
+      }
+      hideError();
+      executePattern(code);
+      document.getElementById('stats').textContent = 'Stepped 1 frame';
+    }
+
+    function clearCanvas() {
+      for(let i = 0; i < leds.length; i++) {
+        leds[i] = {r: 0, g: 0, b: 0};
+      }
+      hue = 0;
+      render();
+      document.getElementById('stats').textContent = 'Cleared';
+    }
+
+    function updateStats() {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const actualFPS = frameCount / elapsed;
+      document.getElementById('canvasStats').textContent =
+        `Frames: ${frameCount} | FPS: ${actualFPS.toFixed(1)} | Hue: ${hue}`;
+    }
+
+    function showError(msg) {
+      const box = document.getElementById('errorBox');
+      box.textContent = msg;
+      box.style.display = 'block';
+    }
+
+    function hideError() {
+      document.getElementById('errorBox').style.display = 'none';
+    }
+
+    // ===== Code Templates =====
+
+    const templates = {
+      horizontal_bars: `// Horizontal Bars - Each strip a different color
+for(let y = 0; y < GRID_HEIGHT; y++) {
+  let stripHue = (hue + y * 28) % 256;
+  for(let x = 0; x < GRID_WIDTH; x++) {
+    let led = XY(x, y);
+    if (led >= 0) leds[led] = CHSV(stripHue, 255, 255);
+  }
+}
+hue++;`,
+
+      vertical_ripple: `// Vertical Ripple - Waves moving vertically
+for(let y = 0; y < GRID_HEIGHT; y++) {
+  let brightness = beatsin8(20, 0, 255, 0, y * 32);
+  for(let x = 0; x < GRID_WIDTH; x++) {
+    let led = XY(x, y);
+    if (led >= 0) leds[led] = CHSV(hue, 255, brightness);
+  }
+}
+hue++;`,
+
+      rain_drops: `// Rain Drops - Droplets falling down
+// Shift everything down
+for(let y = 0; y < GRID_HEIGHT - 1; y++) {
+  for(let x = 0; x < GRID_WIDTH; x++) {
+    let led = XY(x, y);
+    let ledAbove = XY(x, y + 1);
+    if (led >= 0 && ledAbove >= 0) {
+      leds[led] = {...leds[ledAbove]};
+      leds[led].r = Math.max(0, leds[led].r - 10);
+      leds[led].g = Math.max(0, leds[led].g - 10);
+      leds[led].b = Math.max(0, leds[led].b - 10);
+    }
+  }
+}
+// Add new drops at top
+for(let x = 0; x < GRID_WIDTH; x++) {
+  if (random8() < 30) {
+    let led = XY(x, GRID_HEIGHT - 1);
+    if (led >= 0) leds[led] = CHSV(160, 255, 255);
+  }
+}`,
+
+      plasma: `// Plasma 2D - Full plasma effect
+for(let y = 0; y < GRID_HEIGHT; y++) {
+  for(let x = 0; x < GRID_WIDTH; x++) {
+    let led = XY(x, y);
+    if (led >= 0) {
+      let wave1 = sin8((x * 8) + hue);
+      let wave2 = sin8((y * 16) + (hue * 2));
+      let wave3 = sin8(((x + y) * 6) + (hue * 3));
+      let combined = (wave1 + wave2 + wave3) / 3;
+      leds[led] = CHSV(combined, 255, 255);
+    }
+  }
+}
+hue++;`,
+
+      scrolling_rainbow: `// Scrolling Rainbow - Horizontal scroll
+if (typeof scrollPos === 'undefined') scrollPos = 0;
+for(let y = 0; y < GRID_HEIGHT; y++) {
+  for(let x = 0; x < GRID_WIDTH; x++) {
+    let led = XY(x, y);
+    if (led >= 0) {
+      let colorIndex = Math.floor(((x + scrollPos) * 256 / GRID_WIDTH) + (y * 20));
+      leds[led] = CHSV(colorIndex % 256, 255, 255);
+    }
+  }
+}
+scrollPos = (scrollPos + 1) % GRID_WIDTH;`
+    };
+
+    function loadTemplate() {
+      const select = document.getElementById('templateSelect');
+      const template = templates[select.value];
+      if (template) {
+        document.getElementById('codeInput').value = template;
+        select.value = '';
+      }
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
