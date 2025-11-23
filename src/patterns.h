@@ -49,5 +49,6 @@ void pattern_scrolling_rainbow(CRGB* leds, int activeLeds, uint8_t& hue);
 void pattern_particle_fountain(CRGB* leds, int activeLeds, uint8_t& hue);
 void pattern_scrolling_text(CRGB* leds, int activeLeds, uint8_t& hue,
                            const char* text, int& scrollOffset, int scrollSpeed);
+void pattern_test_card(CRGB* leds, int activeLeds, uint8_t& hue);
 
 #endif // PATTERNS_H
