@@ -3,6 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoOTA.h>
+#include "patterns.h"
 
 #ifndef OTA_PASSWORD
 #error "OTA_PASSWORD is missing. Run `make ota-init` to generate config/ota.env or set OTA_PASSWORD in your environment."
@@ -26,9 +27,25 @@ CRGB leds[MAX_LEDS];
 int activeLeds = 1296;       // 9 strips of 144 LEDs each
 ESP8266WebServer server(80);
 
+// 2D Grid Configuration
+#define GRID_WIDTH  144      // LEDs per strip (horizontal) - 1 meter
+#define GRID_HEIGHT 9        // Number of strips (vertical) - 45cm total (5cm spacing)
+
+// Physical dimensions for aspect-ratio-aware patterns
+#define LED_SPACING_H 6.9    // ~6.9mm between LEDs horizontally (1000mm / 144)
+#define LED_SPACING_V 50.0   // 50mm between strips vertically (5cm)
+#define ASPECT_RATIO 7.25    // V/H ratio (50/6.9) for circular patterns
+
+// XY function is now in patterns.h
+
 // State variables
 int currentPattern = 0; // 0: Rainbow, 1: Red, 2: Green, 3: Blue, 4: Off
 uint8_t hue = 0;
+String scrollText = "HELLO WORLD";  // Text to scroll
+int scrollOffset = 0;
+int scrollSpeed = 80;  // Scroll speed in milliseconds (default 80ms)
+
+// Font data is now in patterns/font.cpp
 
 // HTML Page
 const char htmlPage[] PROGMEM = R"=====(
@@ -49,16 +66,35 @@ const char htmlPage[] PROGMEM = R"=====(
     .fire { background: linear-gradient(to right, #ff0000, #ffff00); color: black; }
     .special { background: linear-gradient(to right, #00ffff, #ff00ff); color: black; }
     .off { background-color: #555; color: white; }
+
+    /* Tab styles */
+    .tabs { display: flex; margin: 20px 0; border-bottom: 2px solid #444; }
+    .tab { flex: 1; padding: 15px; background: #333; border: none; color: #aaa; cursor: pointer; font-size: 16px; }
+    .tab.active { background: #444; color: #fff; border-bottom: 3px solid #00ffff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
   </style>
   <script>
     function setMode(m) {
       fetch('/set?m=' + m);
     }
+    function showTab(tabName) {
+      var tabs = document.getElementsByClassName('tab-content');
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove('active');
+      }
+      var tabButtons = document.getElementsByClassName('tab');
+      for (var i = 0; i < tabButtons.length; i++) {
+        tabButtons[i].classList.remove('active');
+      }
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
   </script>
 </head>
 <body>
-  <h1>LED Control</h1>
-  
+  <h1>LED Control (9×144 Grid)</h1>
+
   <div class="control-group">
     <label>Number of LEDs:</label>
     <form action="/set" method="get" style="display:inline;">
@@ -66,6 +102,64 @@ const char htmlPage[] PROGMEM = R"=====(
       <button type="submit" style="display:inline; width:auto; padding: 10px;">Set</button>
     </form>
   </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('tab-1d')">1D Patterns</button>
+    <button class="tab" onclick="showTab('tab-2d')">2D Grid Patterns</button>
+    <button class="tab" onclick="showTab('tab-text')">Scrolling Text</button>
+    <button class="tab" onclick="showTab('tab-basic')">Basic</button>
+  </div>
+
+  <!-- Scrolling Text Tab -->
+  <div id="tab-text" class="tab-content">
+    <h2>Scrolling Text</h2>
+    <div class="control-group">
+      <label>Enter text to scroll:</label>
+      <form action="/setText" method="get" style="margin-top: 10px;">
+        <input type="text" name="text" id="text" value="%TEXT%" style="width: 80%; padding: 10px; font-size: 16px;" maxlength="100">
+
+        <div style="margin-top: 15px;">
+          <label>Scroll Speed: <span id="speedDisplay">%SPEED%</span> ms</label><br>
+          <input type="range" name="speed" id="speedSlider" min="20" max="200" value="%SPEED%" style="width: 80%;"
+                 oninput="document.getElementById('speedDisplay').textContent = this.value">
+          <br>
+          <small style="color: #888;">Lower = Faster, Higher = Slower</small>
+        </div>
+
+        <button type="submit" style="width: 100%; margin-top: 10px;">Update Text & Start Scrolling</button>
+      </form>
+    </div>
+    <p style="color: #aaa; font-size: 14px;">Supports: A-Z, 0-9, space, !, ., -</p>
+  </div>
+
+  <!-- 2D Grid Patterns Tab -->
+  <div id="tab-2d" class="tab-content">
+    <h2>2D Grid Patterns (1m × 45cm)</h2>
+    <button class="rainbow" onclick="setMode(100)">Horizontal Bars</button>
+    <button class="cool" onclick="setMode(101)">Vertical Ripple</button>
+    <button class="fire" onclick="setMode(102)">2D Fire Rising</button>
+    <button class="blue" onclick="setMode(103)">Rain Drops</button>
+    <button class="rainbow" onclick="setMode(104)">Vertical Equalizer</button>
+    <button class="cool" onclick="setMode(105)">Scanning Lines</button>
+    <button class="special" onclick="setMode(106)">Checkerboard</button>
+    <button class="rainbow" onclick="setMode(107)">Diagonal Sweep</button>
+    <button class="cool" onclick="setMode(108)">Vertical Wave</button>
+    <button class="special" onclick="setMode(109)">Plasma 2D</button>
+
+    <button class="green" onclick="setMode(110)">Matrix Rain 2D</button>
+    <button class="cool" onclick="setMode(111)">Game of Life</button>
+    <button class="blue" onclick="setMode(112)">Wave Pool</button>
+    <button class="green" onclick="setMode(113)">Aurora 2D</button>
+    <button class="fire" onclick="setMode(114)">Lava Lamp 2D</button>
+    <button class="special" onclick="setMode(115)">2D Ripple</button>
+    <button class="cool" onclick="setMode(116)">Starfield Parallax</button>
+    <button class="fire" onclick="setMode(117)">Side Fire</button>
+    <button class="rainbow" onclick="setMode(118)">Scrolling Rainbow</button>
+    <button class="special" onclick="setMode(119)">Particle Fountain</button>
+  </div>
+
+  <!-- 1D Patterns Tab -->
+  <div id="tab-1d" class="tab-content active">
 
   <button class="rainbow" onclick="setMode(0)">Rainbow Loop</button>
   <button class="rainbow" onclick="setMode(10)">Rainbow Glitter</button>
@@ -169,11 +263,16 @@ const char htmlPage[] PROGMEM = R"=====(
   <button class="cool" onclick="setMode(7)">BPM Pulse</button>
   <button class="cool" onclick="setMode(8)">Juggle</button>
   <button class="fire" onclick="setMode(9)">Fire</button>
-  
-  <button class="red" onclick="setMode(1)">Red</button>
-  <button class="green" onclick="setMode(2)">Green</button>
-  <button class="blue" onclick="setMode(3)">Blue</button>
-  <button class="off" onclick="setMode(4)">Turn Off</button>
+  </div>
+
+  <!-- Basic Controls Tab -->
+  <div id="tab-basic" class="tab-content">
+    <h2>Basic Controls</h2>
+    <button class="red" onclick="setMode(1)">Red</button>
+    <button class="green" onclick="setMode(2)">Green</button>
+    <button class="blue" onclick="setMode(3)">Blue</button>
+    <button class="off" onclick="setMode(4)">Turn Off</button>
+  </div>
 </body>
 </html>
 )=====";
@@ -181,6 +280,8 @@ const char htmlPage[] PROGMEM = R"=====(
 void handleRoot() {
   String page = htmlPage;
   page.replace("%LEDS%", String(activeLeds));
+  page.replace("%TEXT%", scrollText);
+  page.replace("%SPEED%", String(scrollSpeed));
   server.send(200, "text/html", page);
 }
 
@@ -198,6 +299,23 @@ void handleSet() {
     }
   }
   server.send(200, "text/plain", "OK");
+}
+
+void handleSetText() {
+  if (server.hasArg("text")) {
+    scrollText = server.arg("text");
+    scrollText.toUpperCase(); // Convert to uppercase for font
+    scrollOffset = 0; // Reset scroll position
+    currentPattern = 120; // Switch to scrolling text mode
+  }
+  if (server.hasArg("speed")) {
+    scrollSpeed = server.arg("speed").toInt();
+    // Constrain to valid range
+    if (scrollSpeed < 20) scrollSpeed = 20;
+    if (scrollSpeed > 200) scrollSpeed = 200;
+  }
+  server.sendHeader("Location", "/");
+  server.send(303); // Redirect back to main page
 }
 
 // Global flag to track web server status
@@ -287,6 +405,7 @@ void setup() {
   // Web Server
   server.on("/", handleRoot);
   server.on("/set", handleSet);
+  server.on("/setText", handleSetText);
   server.begin();
   serverRunning = true; // server is up
 
@@ -298,33 +417,14 @@ void setup() {
   FastLED.show();
 }
 
-void loop() {
-  ArduinoOTA.handle();
-  server.handleClient();
+void renderPatternFrame(int currentPattern, CRGB* leds, int activeLeds, uint8_t& hue, String& scrollText, int& scrollOffset, int scrollSpeed) {
+  // Always clear buffer first to handle changing sizes cleanly
+  // Patterns that need fade/trail effect: 5, 6, 8, 10, 13, 14, 23, 26, 29, 32, 33, 37, 43, 44, 51, 52, 54, 58, 60, 61, 65, 66, 68, 73, 74, 75, 82, 86, 90, 94, 96, 98, 99, 103, 105, 110, 116, 119
+  if (currentPattern != 0 && currentPattern != 5 && currentPattern != 6 && currentPattern != 8 && currentPattern != 10 && currentPattern != 13 && currentPattern != 14 && currentPattern != 23 && currentPattern != 26 && currentPattern != 29 && currentPattern != 32 && currentPattern != 33 && currentPattern != 37 && currentPattern != 43 && currentPattern != 44 && currentPattern != 51 && currentPattern != 52 && currentPattern != 54 && currentPattern != 58 && currentPattern != 60 && currentPattern != 61 && currentPattern != 65 && currentPattern != 66 && currentPattern != 68 && currentPattern != 73 && currentPattern != 74 && currentPattern != 75 && currentPattern != 82 && currentPattern != 86 && currentPattern != 90 && currentPattern != 94 && currentPattern != 96 && currentPattern != 98 && currentPattern != 99 && currentPattern != 103 && currentPattern != 105 && currentPattern != 110 && currentPattern != 116 && currentPattern != 119) {
+     fill_solid(leds, MAX_LEDS, CRGB::Black);
+  }
 
-  // Non-blocking animation
-  EVERY_N_MILLISECONDS(20) {
-    // Only run animations if the server is up and running
-    if (!serverRunning) {
-      // Flash red to indicate server not up
-      static bool flashState = false;
-      if (flashState) {
-        fill_solid(leds, MAX_LEDS, CRGB::Red);
-      } else {
-        fill_solid(leds, MAX_LEDS, CRGB::Black);
-      }
-      flashState = !flashState;
-      FastLED.show();
-      return; // Skip animation logic if server not ready
-    }
-
-    // Always clear buffer first to handle changing sizes cleanly
-    // Patterns that need fade/trail effect: 5, 6, 8, 10, 13, 14, 23, 26, 29, 32, 33, 37, 43, 44, 51, 52, 54, 58, 60, 61, 65, 66, 68, 73, 74, 75, 82, 86, 90, 94, 96, 98, 99
-    if (currentPattern != 0 && currentPattern != 5 && currentPattern != 6 && currentPattern != 8 && currentPattern != 10 && currentPattern != 13 && currentPattern != 14 && currentPattern != 23 && currentPattern != 26 && currentPattern != 29 && currentPattern != 32 && currentPattern != 33 && currentPattern != 37 && currentPattern != 43 && currentPattern != 44 && currentPattern != 51 && currentPattern != 52 && currentPattern != 54 && currentPattern != 58 && currentPattern != 60 && currentPattern != 61 && currentPattern != 65 && currentPattern != 66 && currentPattern != 68 && currentPattern != 73 && currentPattern != 74 && currentPattern != 75 && currentPattern != 82 && currentPattern != 86 && currentPattern != 90 && currentPattern != 94 && currentPattern != 96 && currentPattern != 98 && currentPattern != 99) { 
-       fill_solid(leds, MAX_LEDS, CRGB::Black);
-    }
-
-    switch (currentPattern) {
+  switch (currentPattern) {
       case 0: // Rainbow
         fill_rainbow(leds, activeLeds, hue++, 7);
         break;
@@ -1259,13 +1359,120 @@ void loop() {
           }
         }
         break;
+      case 100: // Horizontal Bars - Each strip a different cycling color
+        pattern_horizontal_bars(leds, activeLeds, hue);
+        break;
+
+      case 101: // Vertical Ripple - Waves moving vertically
+        pattern_vertical_ripple(leds, activeLeds, hue);
+        break;
+
+      case 102: // 2D Fire Rising - Fire effect rising from bottom
+        pattern_fire_rising(leds, activeLeds, hue);
+        break;
+
+      case 103: // Rain Drops - Droplets falling down
+        pattern_rain_drops(leds, activeLeds, hue);
+        break;
+
+      case 104: // Vertical Equalizer - Each strip is a bar
+        pattern_vertical_equalizer(leds, activeLeds, hue);
+        break;
+
+      case 105: // Scanning Lines - Horizontal lines moving up/down
+        pattern_scanning_lines(leds, activeLeds, hue);
+        break;
+
+      case 106: // Checkerboard - Classic 2D pattern
+        pattern_checkerboard(leds, activeLeds, hue);
+        break;
+
+      case 107: // Diagonal Sweep - Diagonal lines moving
+        pattern_diagonal_sweep(leds, activeLeds, hue);
+        break;
+
+      case 108: // Vertical Wave - Sine wave across strips
+        pattern_vertical_wave(leds, activeLeds, hue);
+        break;
+
+      case 109: // Plasma 2D - Full 2D plasma effect
+        pattern_plasma_2d(leds, activeLeds, hue);
+        break;
+
+      case 110: // Matrix Rain 2D - Proper Matrix effect with columns
+        pattern_matrix_rain(leds, activeLeds, hue);
+        break;
+
+      case 111: // Game of Life - Conway's cellular automaton
+        pattern_game_of_life(leds, activeLeds, hue);
+        break;
+
+      case 112: // Wave Pool - Horizontal waves perfect for 1m strips
+        pattern_wave_pool(leds, activeLeds, hue);
+        break;
+
+      case 113: // Aurora 2D - Optimized for horizontal strips
+        pattern_aurora_2d(leds, activeLeds, hue);
+        break;
+
+      case 114: // Lava Lamp 2D - Aspect-ratio corrected blobs
+        pattern_lava_lamp(leds, activeLeds, hue);
+        break;
+
+      case 115: // 2D Ripple - Aspect-ratio corrected circles
+        pattern_ripple_2d(leds, activeLeds, hue);
+        break;
+
+      case 116: // Starfield Parallax - Stars moving at different speeds
+        pattern_starfield(leds, activeLeds, hue);
+        break;
+
+      case 117: // Side Fire - Fire from left and right edges
+        pattern_side_fire(leds, activeLeds, hue);
+        break;
+
+      case 118: // Scrolling Rainbow - Smooth horizontal scroll
+        pattern_scrolling_rainbow(leds, activeLeds, hue);
+        break;
+
+      case 119: // Particle Fountain - Particles shoot up from bottom
+        pattern_particle_fountain(leds, activeLeds, hue);
+        break;
+
+      case 120: // Scrolling Text - Aspect-ratio corrected for 7.2:1 physical spacing
+        pattern_scrolling_text(leds, activeLeds, hue, scrollText.c_str(), scrollOffset, scrollSpeed);
+        break;
+
+  }
+
+  // Ensure any LEDs beyond active count are always black
+  if (activeLeds < MAX_LEDS) {
+      for(int i=activeLeds; i<MAX_LEDS; i++) leds[i] = CRGB::Black;
+  }
+}
+
+void loop() {
+  ArduinoOTA.handle();
+  server.handleClient();
+
+  // Non-blocking animation
+  EVERY_N_MILLISECONDS(20) {
+    // Only run animations if the server is up and running
+    if (!serverRunning) {
+      // Flash red to indicate server not up
+      static bool flashState = false;
+      if (flashState) {
+        fill_solid(leds, MAX_LEDS, CRGB::Red);
+      } else {
+        fill_solid(leds, MAX_LEDS, CRGB::Black);
+      }
+      flashState = !flashState;
+      FastLED.show();
+      return; // Skip animation logic if server not ready
     }
-    
-    // Ensure any LEDs beyond active count are always black
-    if (activeLeds < MAX_LEDS) {
-        for(int i=activeLeds; i<MAX_LEDS; i++) leds[i] = CRGB::Black;
-    }
-    
+
+    renderPatternFrame(currentPattern, leds, activeLeds, hue, scrollText, scrollOffset, scrollSpeed);
     FastLED.show();
   }
 }
+
