@@ -45,6 +45,10 @@ String scrollText = "HELLO WORLD";  // Text to scroll
 int scrollOffset = 0;
 int scrollSpeed = 80;  // Scroll speed in milliseconds (default 80ms)
 
+// Custom pattern storage (for pattern designer)
+CRGB customPattern[MAX_LEDS];
+bool hasCustomPattern = false;
+
 // Font data is now in patterns/font.cpp
 
 // HTML Page
@@ -319,6 +323,109 @@ void handleSetText() {
   server.send(303); // Redirect back to main page
 }
 
+void handleUploadPattern() {
+  // Enable CORS for cross-origin requests from pattern designer
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (server.method() == HTTP_OPTIONS) {
+    // Handle preflight
+    server.send(200);
+    return;
+  }
+
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+    return;
+  }
+
+  String body = server.arg("plain");
+
+  // Clear pattern to black first
+  for (int i = 0; i < MAX_LEDS; i++) {
+    customPattern[i] = CRGB::Black;
+  }
+
+  // Parse sparse format: {"sparse":[[ledIndex,r,g,b],...], "scrollSpeed":80}
+  int sparseStart = body.indexOf("\"sparse\":[");
+  if (sparseStart == -1) {
+    server.send(400, "text/plain", "Invalid JSON: missing sparse array");
+    return;
+  }
+
+  int pixelCount = 0;
+  int pos = sparseStart + 10; // Skip to after "sparse":[
+
+  while (pos < body.length()) {
+    // Skip whitespace
+    while (pos < body.length() && (body[pos] == ' ' || body[pos] == '\n')) pos++;
+
+    // Look for [ledIndex,r,g,b]
+    if (body[pos] == '[') {
+      pos++; // Skip [
+
+      // Parse LED index
+      int ledIdx = 0;
+      while (pos < body.length() && body[pos] >= '0' && body[pos] <= '9') {
+        ledIdx = ledIdx * 10 + (body[pos] - '0');
+        pos++;
+      }
+      while (pos < body.length() && body[pos] == ',') pos++; // Skip comma
+
+      // Parse R
+      int r = 0;
+      while (pos < body.length() && body[pos] >= '0' && body[pos] <= '9') {
+        r = r * 10 + (body[pos] - '0');
+        pos++;
+      }
+      while (pos < body.length() && body[pos] == ',') pos++; // Skip comma
+
+      // Parse G
+      int g = 0;
+      while (pos < body.length() && body[pos] >= '0' && body[pos] <= '9') {
+        g = g * 10 + (body[pos] - '0');
+        pos++;
+      }
+      while (pos < body.length() && body[pos] == ',') pos++; // Skip comma
+
+      // Parse B
+      int b = 0;
+      while (pos < body.length() && body[pos] >= '0' && body[pos] <= '9') {
+        b = b * 10 + (body[pos] - '0');
+        pos++;
+      }
+
+      // Store LED color at specific index
+      if (ledIdx >= 0 && ledIdx < MAX_LEDS) {
+        customPattern[ledIdx] = CRGB(r, g, b);
+        pixelCount++;
+      }
+
+      // Skip to next element
+      while (pos < body.length() && body[pos] != '[' && body[pos] != ']') pos++;
+      if (body[pos] == ']') pos++; // Skip ]
+      if (body[pos] == ',') pos++; // Skip comma between array elements
+    } else if (body[pos] == ']') {
+      // End of sparse array
+      break;
+    } else {
+      pos++;
+    }
+  }
+
+  if (pixelCount > 0) {
+    hasCustomPattern = true;
+    currentPattern = 122; // Switch to custom pattern mode
+    server.send(200, "application/json", "{\"status\":\"success\",\"pixels\":" + String(pixelCount) + "}");
+  } else {
+    // Even with 0 pixels, we can show a blank pattern
+    hasCustomPattern = true;
+    currentPattern = 122;
+    server.send(200, "application/json", "{\"status\":\"success\",\"pixels\":0}");
+  }
+}
+
 // Global flag to track web server status
 bool serverRunning = false;
 
@@ -407,6 +514,12 @@ void setup() {
   server.on("/", handleRoot);
   server.on("/set", handleSet);
   server.on("/setText", handleSetText);
+  server.on("/uploadPattern", HTTP_POST, handleUploadPattern);
+  server.on("/uploadPattern", HTTP_OPTIONS, handleUploadPattern); // Handle CORS preflight
+
+  // Increase max POST body size for pattern uploads (default is ~2KB, we need ~20KB)
+  server.setContentLength(25000);
+
   server.begin();
   serverRunning = true; // server is up
 
@@ -1446,6 +1559,18 @@ void renderPatternFrame(int currentPattern, CRGB* leds, int activeLeds, uint8_t&
 
       case 120: // Scrolling Text - Aspect-ratio corrected for 7.2:1 physical spacing
         pattern_scrolling_text(leds, activeLeds, hue, scrollText.c_str(), scrollOffset, scrollSpeed);
+        break;
+
+      case 122: // Custom Pattern from Designer
+        if (hasCustomPattern) {
+          // Display the custom pattern directly
+          for (int i = 0; i < activeLeds && i < MAX_LEDS; i++) {
+            leds[i] = customPattern[i];
+          }
+        } else {
+          // No custom pattern loaded, show message
+          fill_solid(leds, activeLeds, CRGB::Black);
+        }
         break;
 
   }

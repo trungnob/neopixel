@@ -1,0 +1,3 @@
+# Temporary log files
+pattern-upload.log
+*.log

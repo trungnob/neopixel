@@ -45,6 +45,8 @@ const uint8_t font5x7[][5] = {
   {0x00, 0x00, 0x5F, 0x00, 0x00}, // !
   {0x00, 0x60, 0x60, 0x00, 0x00}, // .
   {0x08, 0x08, 0x08, 0x08, 0x08}, // -
+  {0x0E, 0x1F, 0x3E, 0x1F, 0x0E}, // heart (<)
+  {0x18, 0x1E, 0x7F, 0x1E, 0x18}, // Christmas tree (>)
 };
 
 int getFontIndex(char c) {
@@ -55,5 +57,7 @@ int getFontIndex(char c) {
   if (c == '!') return 37;
   if (c == '.') return 38;
   if (c == '-') return 39;
+  if (c == '<') return 40;  // heart
+  if (c == '>') return 41;  // Christmas tree
   return 36;
 }

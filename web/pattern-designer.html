@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>LED Pattern Designer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 10px; font-size: 24px; color: #00ffff; }
+    .info { text-align: center; margin-bottom: 10px; font-size: 14px; color: #888; }
+    .version { color: #0f0; font-size: 12px; }
+
+    .canvas-container {
+      background: #000;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 15px;
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    #canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+      cursor: crosshair;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #444;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      background: #2a2a2a;
+      color: #fff;
+    }
+
+    button:active { transform: scale(0.95); }
+    button.active { border-color: #00ffff; box-shadow: 0 0 10px rgba(0, 255, 255, 0.5); }
+    .draw-btn { background: #4CAF50; }
+    .erase-btn { background: #f44336; }
+    .fill-btn { background: #2196F3; }
+    .clear-btn { background: #FF9800; }
+    .upload-btn { background: #9C27B0; font-size: 18px; grid-column: 1 / -1; }
+
+    .color-picker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 8px;
+      padding: 8px;
+      position: relative;
+    }
+
+    #colorPicker {
+      width: 100%;
+      height: 50px;
+      border: 2px solid #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .settings {
+      background: #2a2a2a;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .setting-row:last-child { margin-bottom: 0; }
+
+    label { font-weight: 600; }
+
+    input[type="text"], input[type="number"] {
+      padding: 8px;
+      font-size: 14px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #1a1a1a;
+      color: #fff;
+      width: 200px;
+    }
+
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-weight: 600;
+      display: none;
+    }
+
+    .status.success { background: #4CAF50; }
+    .status.error { background: #f44336; }
+    .status.info { background: #2196F3; }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 20px; }
+      .controls { grid-template-columns: repeat(2, 1fr); }
+      input[type="text"], input[type="number"] { width: 150px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 LED Pattern Designer</h1>
+    <div class="info">144 × 9 Grid | Zigzag Wiring</div>
+    <div class="version">v3.0 - Cross-Platform | Build: 2025-11-23-22:15</div>
+
+    <div class="canvas-container">
+      <canvas id="canvas" width="1440" height="90"></canvas>
+    </div>
+
+    <div class="controls">
+      <button class="draw-btn active" onclick="setTool('draw')">✏️ Draw</button>
+      <button class="erase-btn" onclick="setTool('erase')">🧹 Erase</button>
+      <button class="fill-btn" onclick="fillAll()">🎨 Fill</button>
+      <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
+      <div class="color-picker">
+        <input type="color" id="colorPicker" value="#ff0000">
+      </div>
+    </div>
+
+    <div class="settings">
+      <div class="setting-row">
+        <label>ESP8266 IP:</label>
+        <input type="text" id="espIP" value="192.168.1.130">
+      </div>
+      <div class="setting-row">
+        <label>Scroll Speed:</label>
+        <input type="number" id="scrollSpeed" value="80" min="20" max="200">
+      </div>
+    </div>
+
+    <button class="upload-btn" onclick="uploadToESP()">🚀 Upload to ESP8266</button>
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    const GRID_WIDTH = 144;
+    const GRID_HEIGHT = 9;
+    const CELL_SIZE = 10; // Each cell is 10x10 in the canvas
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let currentTool = 'draw';
+    let currentColor = '#ff0000';
+    let isDrawing = false;
+
+    // Pattern data: 2D array of RGB values
+    let pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+      Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+    );
+
+    // Initialize
+    function init() {
+      clearCanvas();
+      setupEvents();
+    }
+
+    // Unified pointer event handler (works for both mouse and touch)
+    function getGridCoordinates(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+
+      // Calculate scale factor
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      // Get position on canvas
+      const canvasX = (clientX - rect.left) * scaleX;
+      const canvasY = (clientY - rect.top) * scaleY;
+
+      // Convert to grid coordinates
+      const x = Math.floor(canvasX / CELL_SIZE);
+      const y = Math.floor(canvasY / CELL_SIZE);
+
+      return { x, y };
+    }
+
+    function handlePointerDown(clientX, clientY) {
+      isDrawing = true;
+      drawPixel(clientX, clientY);
+    }
+
+    function handlePointerMove(clientX, clientY) {
+      if (!isDrawing) return;
+      drawPixel(clientX, clientY);
+    }
+
+    function handlePointerUp() {
+      isDrawing = false;
+    }
+
+    function drawPixel(clientX, clientY) {
+      const { x, y } = getGridCoordinates(clientX, clientY);
+
+      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+        if (currentTool === 'draw') {
+          pattern[y][x] = hexToRgb(currentColor);
+        } else if (currentTool === 'erase') {
+          pattern[y][x] = [0, 0, 0];
+        }
+        redrawCanvas();
+      }
+    }
+
+    function setupEvents() {
+      // Mouse events
+      canvas.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handlePointerDown(e.clientX, e.clientY);
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        handlePointerMove(e.clientX, e.clientY);
+      });
+
+      canvas.addEventListener('mouseup', () => handlePointerUp());
+      canvas.addEventListener('mouseleave', () => handlePointerUp());
+
+      // Touch events
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handlePointerDown(touch.clientX, touch.clientY);
+      });
+
+      canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handlePointerMove(touch.clientX, touch.clientY);
+      });
+
+      canvas.addEventListener('touchend', () => handlePointerUp());
+
+      // Color picker
+      document.getElementById('colorPicker').addEventListener('change', (e) => {
+        currentColor = e.target.value;
+      });
+    }
+
+    function setTool(tool) {
+      currentTool = tool;
+      document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+      if (tool === 'draw') document.querySelector('.draw-btn').classList.add('active');
+      if (tool === 'erase') document.querySelector('.erase-btn').classList.add('active');
+    }
+
+    function clearCanvas() {
+      pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+        Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+      );
+      redrawCanvas();
+    }
+
+    function fillAll() {
+      const rgb = hexToRgb(currentColor);
+      pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+        Array(GRID_WIDTH).fill(null).map(() => [...rgb])
+      );
+      redrawCanvas();
+    }
+
+    function redrawCanvas() {
+      // Clear canvas
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw pixels
+      for (let y = 0; y < GRID_HEIGHT; y++) {
+        for (let x = 0; x < GRID_WIDTH; x++) {
+          const [r, g, b] = pattern[y][x];
+          if (r > 0 || g > 0 || b > 0) {
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+          }
+        }
+      }
+
+      // Draw grid
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= GRID_WIDTH; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * CELL_SIZE, 0);
+        ctx.lineTo(x * CELL_SIZE, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= GRID_HEIGHT; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * CELL_SIZE);
+        ctx.lineTo(canvas.width, y * CELL_SIZE);
+        ctx.stroke();
+      }
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+      ] : [255, 0, 0];
+    }
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = 'status ' + type;
+      statusDiv.style.display = 'block';
+      setTimeout(() => statusDiv.style.display = 'none', 5000);
+    }
+
+    async function uploadToESP() {
+      const espIP = document.getElementById('espIP').value;
+      const scrollSpeed = parseInt(document.getElementById('scrollSpeed').value);
+
+      showStatus('Uploading...', 'info');
+
+      try {
+        // Convert to sparse format
+        const sparseData = [];
+        let ledIndex = 0;
+
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+          if (y % 2 === 0) {
+            // Even rows: left to right
+            for (let x = 0; x < GRID_WIDTH; x++) {
+              const [r, g, b] = pattern[y][x];
+              if (r > 0 || g > 0 || b > 0) {
+                sparseData.push([ledIndex, r, g, b]);
+              }
+              ledIndex++;
+            }
+          } else {
+            // Odd rows: right to left (zigzag)
+            for (let x = GRID_WIDTH - 1; x >= 0; x--) {
+              const [r, g, b] = pattern[y][x];
+              if (r > 0 || g > 0 || b > 0) {
+                sparseData.push([ledIndex, r, g, b]);
+              }
+              ledIndex++;
+            }
+          }
+        }
+
+        const payload = JSON.stringify({
+          sparse: sparseData,
+          scrollSpeed: scrollSpeed
+        });
+
+        // Log to debug server
+        try {
+          await fetch('http://192.168.1.132:8080/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload
+          });
+        } catch (e) { /* Ignore if log server not running */ }
+
+        // Send to ESP8266
+        const response = await fetch(`http://${espIP}/uploadPattern`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+
+        if (response.ok) {
+          showStatus(`✅ Uploaded ${sparseData.length} pixels!`, 'success');
+        } else {
+          showStatus('❌ Upload failed: ' + response.statusText, 'error');
+        }
+      } catch (error) {
+        showStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>

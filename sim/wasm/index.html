@@ -133,7 +133,7 @@
           <span>Scroll text</span>
           <span id="text-len" aria-live="polite"></span>
         </div>
-        <input id="scroll-text" type="text" value="HELLO WORLD" maxlength="100" />
+        <input id="scroll-text" type="text" value="< HELLO >" maxlength="100" />
       </div>
       <div class="btn-row" style="margin-top:10px;">
         <button class="btn" id="apply-text">Update Text</button>
@@ -283,8 +283,8 @@
         opt.textContent = `${p.id} – ${p.name}`;
         patternSelect.appendChild(opt);
       });
-      patternSelect.value = '100';
-      setPattern(100);
+      patternSelect.value = '120';
+      setPattern(120);
 
       patternSelect.addEventListener('change', (e) => setPattern(parseInt(e.target.value, 10)));
 
