@@ -21,6 +21,11 @@ This PlatformIO project drives a WS2812B/NeoPixel strip from an ESP8266 (NodeMCU
   # then open http://localhost:8000/sim/wasm/index.html
   ```
 - Controls include pattern select, play/pause/step, random seed, scrolling text + speed (pattern 120), FPS and lit-pixel counts. Pattern 121 is a single-pixel test card for mapping checks.
+- Adding patterns (device + simulator):
+  - Add a new `pattern_XXX_*.cpp` under `src/patterns/`, declare it in `src/patterns.h`, and add a `case XXX` in `src/main.cpp` that calls your function (and a button in the HTML UI if you want it on-device).
+  - For simulator support, add the new ID/name to the array in `sim/wasm/index.html` and include the pattern function in `sim/wasm/sim_core.cpp`’s switch.
+  - Rebuild firmware: `make build` (or upload).
+  - Rebuild simulator: `source third_party/emsdk/emsdk_env.sh && make sim-build-wasm`, then hard-refresh the viewer.
 
 ## Getting Started
 1. Clone this repo (or copy `platformio.ini`/`src` into an existing PlatformIO workspace).
