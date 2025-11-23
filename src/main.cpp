@@ -156,6 +156,7 @@ const char htmlPage[] PROGMEM = R"=====(
     <button class="fire" onclick="setMode(117)">Side Fire</button>
     <button class="rainbow" onclick="setMode(118)">Scrolling Rainbow</button>
     <button class="special" onclick="setMode(119)">Particle Fountain</button>
+    <button class="cool" onclick="setMode(121)">Test Card</button>
   </div>
 
   <!-- 1D Patterns Tab -->
@@ -1439,6 +1440,10 @@ void renderPatternFrame(int currentPattern, CRGB* leds, int activeLeds, uint8_t&
         pattern_particle_fountain(leds, activeLeds, hue);
         break;
 
+      case 121: // Test Card - simple moving hue grid
+        pattern_test_card(leds, activeLeds, hue);
+        break;
+
       case 120: // Scrolling Text - Aspect-ratio corrected for 7.2:1 physical spacing
         pattern_scrolling_text(leds, activeLeds, hue, scrollText.c_str(), scrollOffset, scrollSpeed);
         break;
@@ -1475,4 +1480,3 @@ void loop() {
     FastLED.show();
   }
 }
-

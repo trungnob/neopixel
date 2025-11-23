@@ -51,6 +51,7 @@ static void runPattern() {
     case 120:
       pattern_scrolling_text(leds, activeLeds, hue, scrollText.c_str(), scrollOffset, scrollSpeed);
       break;
+    case 121: pattern_test_card(leds, activeLeds, hue); break;
     default:
       fill_solid(leds, activeLeds, CRGB::Black);
       break;
