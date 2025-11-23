@@ -8,6 +8,20 @@ This PlatformIO project drives a WS2812B/NeoPixel strip from an ESP8266 (NodeMCU
 - On-boot LED status indicators so you know whether Wi-Fi and HTTP server are running.
 - OTA and HTTP API endpoints so you can reflash or integrate it elsewhere.
 
+## Simulator (WASM)
+- There is a WebAssembly simulator that runs the real 2D patterns (100–121) in the browser using the C++ code. It preserves physical strip spacing and zigzag wiring so you can preview layout and timing without hardware.
+- Build the simulator artifacts:
+  ```bash
+  source third_party/emsdk/emsdk_env.sh
+  make sim-build-wasm
+  ```
+- Serve the repo root and open the viewer:
+  ```bash
+  python3 -m http.server 8000
+  # then open http://localhost:8000/sim/wasm/index.html
+  ```
+- Controls include pattern select, play/pause/step, random seed, scrolling text + speed (pattern 120), FPS and lit-pixel counts. Pattern 121 is a single-pixel test card for mapping checks.
+
 ## Getting Started
 1. Clone this repo (or copy `platformio.ini`/`src` into an existing PlatformIO workspace).
 2. Run `make deps` (or `scripts/bootstrap.sh`) to create `.venv/` with PlatformIO + esptool. Requires `python3`, `pip`, and internet access.
