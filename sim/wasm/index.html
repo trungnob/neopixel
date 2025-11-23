@@ -148,6 +148,7 @@
       <div class="tag"><span class="dot"></span><span id="fps">FPS: --</span></div>
       <div class="tag">LEDs: 1296</div>
       <div class="tag">Grid: 144 × 9</div>
+      <div class="tag" id="lit-tag">Lit: --</div>
     </div>
   </div>
 
@@ -203,6 +204,7 @@
     const patternSelect = $('pattern-select');
     const patternIdLabel = $('pattern-id');
     const fpsLabel = $('fps');
+    const litLabel = $('lit-tag');
     const speedInput = $('speed');
     const speedLabel = $('speed-label');
     const textInput = $('scroll-text');
@@ -216,6 +218,7 @@
     let running = true;
     let lastTime = performance.now();
     let fpsCounter = { frames: 0, last: performance.now() };
+    let setText = (txt) => {};
 
     function updateFps(now) {
       fpsCounter.frames++;
@@ -239,6 +242,7 @@
         const ledCount = len / 3;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let litCount = 0;
         for (let led = 0, off = 0; led < ledCount; led++, off += 3) {
           const row = Math.floor(led / GRID_WIDTH);
           const colInRow = led % GRID_WIDTH;
@@ -248,7 +252,9 @@
           const y = row * (LED_SIZE + GAP_PX);
           ctx.fillStyle = `rgb(${buf[off]},${buf[off + 1]},${buf[off + 2]})`;
           ctx.fillRect(x, y, LED_SIZE, LED_SIZE);
+          if (buf[off] || buf[off + 1] || buf[off + 2]) litCount++;
         }
+        litLabel.textContent = `Lit: ${litCount}`;
         updateFps(now);
       }
       requestAnimationFrame(renderFrame);
@@ -262,13 +268,14 @@
     function applyText() {
       const txt = textInput.value || '';
       textLen.textContent = `${txt.length}/100`;
-      sim._sim_set_text(txt);
+      setText(txt);
     }
 
     async function main() {
       sim = await createSim();
       sim._sim_init(GRID_WIDTH, GRID_HEIGHT);
       sim._sim_seed(Date.now() & 0xffffffff);
+      setText = (txt) => sim.ccall('sim_set_text', 'void', ['string'], [txt]);
 
       patterns.forEach((p) => {
         const opt = document.createElement('option');
