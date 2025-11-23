@@ -12,7 +12,7 @@ OUT ?=
 
 DEVICE_ENV := PIO_ENV="$(PIO_ENV)" PORT="$(PORT)" BAUD="$(BAUD)" FLASH_BAUD="$(FLASH_BAUD)" FLASH_SIZE="$(FLASH_SIZE)" OUT_DIR="$(OUT_DIR)"
 
-.PHONY: help deps build upload upload-ota monitor clean download ota-init
+.PHONY: help deps build upload upload-ota monitor clean download ota-init sim-build-wasm
 
 help:
 	@echo "Common targets:"
@@ -24,6 +24,7 @@ help:
 	@echo "  make clean            # Remove build artifacts"
 	@echo "  make download [OUT=flash.bin PORT=...]  # Dump flash via esptool"
 	@echo "  make ota-init [HOST=...]   # Generate config/ota.env with random password"
+	@echo "  make sim-build-wasm   # Build WASM simulator core (requires emcc)"
 
 build:
 	$(DEVICE_ENV) scripts/device.sh build
@@ -56,3 +57,6 @@ deps:
 
 ota-init:
 	$(DEVICE_ENV) HOST="$(HOST)" scripts/device.sh ota-init "$(HOST)"
+
+sim-build-wasm:
+	scripts/build_sim_wasm.sh
