@@ -33,7 +33,8 @@ If `emcc` is missing the script will fail with a helpful message.
 
 ## Minimal UI
 - `sim/wasm/index.html` is a static viewer for patterns 100–120. Serve the repo (e.g. `python3 -m http.server 8000`) and open `http://localhost:8000/sim/wasm/index.html`.
-- Controls: pattern select, play/pause/step, seed randomizer, text + scroll speed for pattern 120, FPS readout. Canvas uses `sim-core.js/wasm` directly (no bundler needed).
+- Controls: pattern select, play/pause/step, seed randomizer, text + scroll speed for pattern 120, FPS and lit-pixel readout. Canvas uses `sim-core.js/wasm` directly (no bundler needed).
+- Physical scale: the viewer draws each LED as a small square and inserts a vertical gap between rows based on physical spacing (6.9 mm horizontal, 50 mm vertical). Zigzag wiring is respected when rendering.
 
 ## Adding / tweaking patterns
 - Patterns live under `src/patterns/` and are exposed via `pattern_*.cpp` plus declarations in `src/patterns.h`.
