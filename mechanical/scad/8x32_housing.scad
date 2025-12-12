@@ -176,8 +176,14 @@ if (render_mode == 0) {
     half_housing(is_left_half = true);
 } else if (render_mode == 1) {
     half_housing(is_left_half = false);
+} else if (render_mode == 3) {
+    // Stacked Batch (3x Left Half with 2mm gap) - Matches 'housing_all.stl'
+    for (i = [0:2]) {
+        translate([0, 0, i * 22]) // 20mm height + 2mm gap
+        half_housing(is_left_half = true);
+    }
 } else {
-    // Full Assembly
+    // Full Assembly (Default)
     // Render both halves in place to show the complete panel
     half_housing(is_left_half = true);
     half_housing(is_left_half = false);

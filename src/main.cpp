@@ -5,6 +5,7 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 #include <FastLED.h>
+#include <WiFiUdp.h>
 #include <time.h>
 
 #ifndef OTA_PASSWORD
@@ -28,6 +29,11 @@
 
 CRGB leds[MAX_LEDS];
 ESP8266WebServer server(80);
+WiFiUDP udp;
+#define UDP_PORT 4210
+unsigned long lastUdpPacketTime = 0;
+const unsigned long UDP_TIMEOUT =
+    5000; // Switch back after 5s of silence? Optional.
 
 // Layout Presets
 enum LayoutType {
@@ -39,11 +45,11 @@ enum LayoutType {
 
 // Current layout configuration (changeable at runtime)
 int currentLayout = LAYOUT_32X32_MULTI_PANEL;
-int numPanels = 1;    // Default to 1 panel
-int panelsWide = 1;   // Default to 1 panel wide
-int GRID_WIDTH = 32;  // 1 * 32
-int GRID_HEIGHT = 8;  // 1 * 8
-int activeLeds = 256; // 1 * 256
+int numPanels = 4;     // Default to 4 panels
+int panelsWide = 1;    // Default to 1 panel wide (vertical stack)
+int GRID_WIDTH = 32;   // 32
+int GRID_HEIGHT = 32;  // 32
+int activeLeds = 1024; // 4 * 256
 
 // Layout presets configuration
 struct LayoutConfig {
@@ -571,7 +577,7 @@ void handleUploadPattern() {
         speedVal = speedVal * 10 + (body[p] - '0');
         p++;
       }
-      if (speedVal >= 20 && speedVal <= 2000) {
+      if (speedVal >= 0 && speedVal <= 2000) {
         scrollSpeed = speedVal;
       }
     }
@@ -620,6 +626,61 @@ void handleGetPatterns() {
 
 // Global flag to track web server status
 bool serverRunning = false;
+
+// Global variable to track upload progress
+int uploadLedIdx = 0;
+
+void handleUploadRaw() {
+  HTTPUpload &upload = server.upload();
+
+  if (upload.status == UPLOAD_FILE_START) {
+    // Safety Check: Content-Length
+    if (server.hasHeader("Content-Length")) {
+      int contentLength = server.header("Content-Length").toInt();
+      if (contentLength > MAX_LEDS * 3 + 100) { // +100 for safety/headers
+        Serial.println("Upload too large, rejecting.");
+        // We can't easily stop the upload stream here without closing
+        // connection, but we can set a flag to ignore data.
+        uploadLedIdx = -1;
+        return;
+      }
+    }
+
+    // Reset state
+    uploadLedIdx = 0;
+    hasCustomPattern = true;
+    currentPattern = 122; // Switch to custom pattern mode immediately
+
+    // Optional: Check for scrollSpeed in query param
+    if (server.hasArg("speed")) {
+      scrollSpeed = server.arg("speed").toInt();
+    }
+
+    Serial.println("Starting Raw Upload...");
+
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    // Process chunk
+    if (uploadLedIdx == -1)
+      return; // Rejected
+
+    for (size_t i = 0; i < upload.currentSize; i++) {
+      if (uploadLedIdx < MAX_LEDS * 3) {
+        // Unsafe cast to write directly to the LED array memory
+        // This treats the array of CRGB structs as a raw byte array
+        ((uint8_t *)customPattern)[uploadLedIdx] = upload.buf[i];
+        uploadLedIdx++;
+      }
+    }
+
+  } else if (upload.status == UPLOAD_FILE_END) {
+    if (uploadLedIdx == -1) {
+      Serial.println("Upload rejected.");
+    } else {
+      Serial.print("Raw Upload Done. Bytes: ");
+      Serial.println(uploadLedIdx);
+    }
+  }
+}
 
 void setup() {
   // Start Serial FIRST for debugging
@@ -720,9 +781,23 @@ void setup() {
   server.on("/set", handleSet);
   server.on("/setLayout", handleSetLayout); // NEW: Layout switching endpoint
   server.on("/setText", handleSetText);
+  server.on("/api/patterns", handleGetPatterns);
   server.on("/uploadPattern", HTTP_POST, handleUploadPattern);
   server.on("/uploadPattern", HTTP_OPTIONS,
             handleUploadPattern); // Handle CORS preflight
+
+  // NEW: Raw Binary Upload for memory efficiency
+  // Usage: POST /uploadRaw?speed=80
+  // Body: Raw binary bytes (R, G, B, ...)
+  server.on(
+      "/uploadRaw", HTTP_POST, []() { server.send(200, "text/plain", "OK"); },
+      handleUploadRaw); // Register upload handler
+  server.on("/uploadRaw", HTTP_OPTIONS, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+    server.send(200);
+  });
 
   // Increase max POST body size for pattern uploads (default is ~2KB, we need
   // ~20KB)
@@ -730,6 +805,11 @@ void setup() {
 
   server.begin();
   serverRunning = true; // server is up
+
+  // Start UDP Listener
+  udp.begin(UDP_PORT);
+  Serial.print("UDP Listening on port ");
+  Serial.println(UDP_PORT);
 
   // Indicate server ready with cyan flash
   leds[0] = CRGB::Cyan;
@@ -743,9 +823,9 @@ void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
                         uint8_t &hue, String &scrollText, int &scrollOffset,
                         int scrollSpeed) {
   // Always clear buffer first to handle changing sizes cleanly
-  // Patterns that need fade/trail effect: 5, 6, 8, 10, 13, 14, 23, 26, 29, 32,
-  // 33, 37, 43, 44, 51, 52, 54, 58, 60, 61, 65, 66, 68, 73, 74, 75, 82, 86, 90,
-  // 94, 96, 98, 99, 103, 105, 110, 116, 119
+  // Patterns that need fade/trail effect: 5, 6, 8, 10, 13, 14, 23, 26, 29,
+  // 32, 33, 37, 43, 44, 51, 52, 54, 58, 60, 61, 65, 66, 68, 73, 74, 75, 82,
+  // 86, 90, 94, 96, 98, 99, 103, 105, 110, 116, 119
   if (currentPattern != 0 && currentPattern != 5 && currentPattern != 6 &&
       currentPattern != 8 && currentPattern != 10 && currentPattern != 13 &&
       currentPattern != 14 && currentPattern != 23 && currentPattern != 26 &&
@@ -816,11 +896,12 @@ void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
   case 9: // Fire
     {
       static byte heat[MAX_LEDS];
-      for( int i = 0; i < activeLeds; i++) heat[i] = qsub8( heat[i],  random8(0,
+      for( int i = 0; i < activeLeds; i++) heat[i] = qsub8( heat[i],
+  random8(0,
   ((55 * 10) / activeLeds) + 2)); for( int k= activeLeds - 1; k >= 2; k--)
-  heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3; if( random8() < 120
-  ) { int y = random8(7); heat[y] = qadd8( heat[y], random8(160,255) ); } for(
-  int j = 0; j < activeLeds; j++) leds[j] = HeatColor( heat[j]);
+  heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3; if( random8() <
+  120 ) { int y = random8(7); heat[y] = qadd8( heat[y], random8(160,255) ); }
+  for( int j = 0; j < activeLeds; j++) leds[j] = HeatColor( heat[j]);
     }
     break;
   case 10: // Rainbow Glitter
@@ -1989,11 +2070,14 @@ void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
 
       // Use the global scrollSpeed which should be updated by
       // handleUploadPattern
-      if (millis() - lastScrollTime > (unsigned long)scrollSpeed) {
+      if (scrollSpeed > 0 &&
+          millis() - lastScrollTime > (unsigned long)scrollSpeed) {
         customScrollOffset++;
         if (customScrollOffset >= GRID_WIDTH)
           customScrollOffset = 0;
         lastScrollTime = millis();
+      } else if (scrollSpeed == 0) {
+        customScrollOffset = 0; // Reset offset if static
       }
 
       // Render with scroll offset
@@ -2036,6 +2120,30 @@ void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
 void loop() {
   ArduinoOTA.handle();
   server.handleClient();
+
+  // UDP Handling - Always listening
+  int packetSize = udp.parsePacket();
+  if (packetSize) {
+    // If we receive a UDP packet, switch to Streaming Mode (255)
+    if (currentPattern != 255) {
+      currentPattern = 255;
+      Serial.println("Switched to UDP Streaming Mode");
+    }
+
+    // Read directly into LEDs
+    // Packet format: R, G, B, R, G, B...
+    // We read up to MAX_LEDS * 3 bytes
+    udp.read((char *)leds, min(packetSize, (int)(MAX_LEDS * sizeof(CRGB))));
+
+    lastUdpPacketTime = millis();
+    FastLED.show(); // Show immediately for lowest latency
+  }
+
+  // Optional: Auto-switch back if stream stops?
+  // if (currentPattern == 255 && millis() - lastUdpPacketTime > UDP_TIMEOUT)
+  // {
+  //   currentPattern = 125; // Go back to clock or previous pattern
+  // }
 
   // Non-blocking animation
   EVERY_N_MILLISECONDS(20) {

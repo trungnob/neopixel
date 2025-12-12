@@ -12,7 +12,7 @@ OUT ?=
 
 DEVICE_ENV := PIO_ENV="$(PIO_ENV)" PORT="$(PORT)" BAUD="$(BAUD)" FLASH_BAUD="$(FLASH_BAUD)" FLASH_SIZE="$(FLASH_SIZE)" OUT_DIR="$(OUT_DIR)"
 
-.PHONY: help deps build upload upload-ota monitor clean download ota-init sim-build-wasm
+.PHONY: help deps build upload upload-ota monitor clean download ota-init sim-build-wasm mechanical
 
 help:
 	@echo "Common targets:"
@@ -24,7 +24,8 @@ help:
 	@echo "  make clean            # Remove build artifacts"
 	@echo "  make download [OUT=flash.bin PORT=...]  # Dump flash via esptool"
 	@echo "  make ota-init [HOST=...]   # Generate config/ota.env with random password"
-	@echo "  make sim-build-wasm   # Build WASM simulator core (requires emcc)"
+	@echo "  make mechanical       # Generate STLs from SCAD"
+
 
 build:
 	$(DEVICE_ENV) scripts/device.sh build
@@ -58,5 +59,11 @@ deps:
 ota-init:
 	$(DEVICE_ENV) HOST="$(HOST)" scripts/device.sh ota-init "$(HOST)"
 
-sim-build-wasm:
-	scripts/build_sim_wasm.sh
+mechanical:
+	@echo "Generating STLs..."
+	openscad -D 'render_mode=0' -o mechanical/stl/8x32_housing_left.stl mechanical/scad/8x32_housing.scad
+	openscad -D 'render_mode=1' -o mechanical/stl/8x32_housing_right.stl mechanical/scad/8x32_housing.scad
+	openscad -D 'render_mode=3' -o mechanical/stl/8x32_housing_stack.stl mechanical/scad/8x32_housing.scad
+	@echo "Done! Files in mechanical/stl/"
+
+

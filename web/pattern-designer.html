@@ -51,15 +51,18 @@
       margin-bottom: 15px;
       position: relative;
       width: 100%;
-      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      /* Center the square grid */
+      overflow-x: auto;
     }
 
     #canvas {
       display: block;
-      width: 100%;
       height: auto;
       image-rendering: pixelated;
       cursor: crosshair;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     }
 
     .controls {
@@ -238,513 +241,510 @@
 <body>
   <div class="container">
     <h1>🎨 LED Pattern Designer</h1>
-    <div class="info">144 × 9 Grid | Zigzag Wiring</div>
-    <div class="version">v3.0 - Cross-Platform | Build: 2025-11-23-22:15</div>
-
-    <div class="canvas-container">
-      <canvas id="canvas"></canvas>
-    </div>
-
-    <div class="controls">
-      <button class="draw-btn active" onclick="setTool('draw')">✏️ Draw</button>
-      <button class="erase-btn" onclick="setTool('erase')">🧹 Erase</button>
-      <button class="fill-btn" onclick="fillAll()">🎨 Fill</button>
-      <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
-      <div class="color-picker">
-        <input type="color" id="colorPicker" value="#ff0000">
-      </div>
-    </div>
-
-    <div class="settings">
-      <div class="setting-row">
-        <label>Scroll Speed:</label>
-        <input type="number" id="scrollSpeed" value="80" min="20" max="200">
-      </div>
-    </div>
-
-    <button class="upload-btn" onclick="uploadToESP()">🚀 Upload to ESP8266</button>
-    <div id="status" class="status"></div>
-
-    <hr style="margin: 20px 0; border-color: #333;">
-
-    <h2>🌈 Standard Patterns</h2>
+    <div class="info">32 × 32 Grid | 4 Vertical Panels | Column Zigzag</div>
+    <div class="version">v3.2 - 32x32 Matrix</div>
 
     <div class="tabs">
-      <button class="tab-btn active" onclick="openTab('tab-1d')">1D Patterns</button>
-      <button class="tab-btn" onclick="openTab('tab-2d')">2D Patterns</button>
-      <button class="tab-btn" onclick="openTab('tab-text')">Text</button>
-      <button class="tab-btn" onclick="openTab('tab-basic')">Basic</button>
+      <button class="tab-btn active" onclick="openTab('tab-draw')">✏️ Draw Pattern</button>
+      <button class="tab-btn" onclick="openTab('tab-text')">📝 Scrolling Text</button>
     </div>
 
-    <div id="tab-1d" class="tab-content active">
-      <!-- ... (1D controls) ... -->
+    <div id="tab-draw" class="tab-content active">
+      <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
 
       <div class="controls">
-        <button onclick="setPattern(0)">Rainbow Loop</button>
-        <button onclick="setPattern(10)">Rainbow Glitter</button>
-        <button onclick="setPattern(11)">Candy Cane</button>
-        <button onclick="setPattern(12)">Theater Chase</button>
-        <button onclick="setPattern(13)">Matrix Rain</button>
-        <button onclick="setPattern(14)">Twinkle</button>
-        <button onclick="setPattern(15)">Police Lights</button>
-        <button onclick="setPattern(16)">Running Lights</button>
-        <button onclick="setPattern(17)">Snow Sparkle</button>
-        <button onclick="setPattern(18)">Color Wipe</button>
-        <button onclick="setPattern(19)">Color Pulse</button>
-
-        <button onclick="setPattern(20)">Lightning</button>
-        <button onclick="setPattern(21)">Ocean Waves</button>
-        <button onclick="setPattern(22)">Lava Lamp</button>
-        <button onclick="setPattern(23)">Meteor Rain</button>
-        <button onclick="setPattern(24)">Pride</button>
-        <button onclick="setPattern(25)">Heartbeat</button>
-        <button onclick="setPattern(26)">Comet</button>
-        <button onclick="setPattern(27)">Gradient</button>
-        <button onclick="setPattern(28)">Random Colors</button>
-        <button onclick="setPattern(29)">Knight Rider</button>
-
-        <button onclick="setPattern(30)">Breathing</button>
-        <button onclick="setPattern(31)">Strobe</button>
-        <button onclick="setPattern(32)">Pac-Man</button>
-        <button onclick="setPattern(33)">Bouncing Balls</button>
-        <button onclick="setPattern(34)">USA Flag</button>
-        <button onclick="setPattern(35)">Christmas</button>
-        <button onclick="setPattern(36)">Plasma</button>
-        <button onclick="setPattern(37)">Scanner</button>
-        <button onclick="setPattern(38)">Sparkle</button>
-        <button onclick="setPattern(39)">Color Chase</button>
-
-        <button onclick="setPattern(40)">Rainbow Wave</button>
-        <button onclick="setPattern(41)">Dragon Breath</button>
-        <button onclick="setPattern(42)">Aurora</button>
-        <button onclick="setPattern(43)">Disco Ball</button>
-        <button onclick="setPattern(44)">Waterfall</button>
-        <button onclick="setPattern(45)">Neon Signs</button>
-        <button onclick="setPattern(46)">Traffic Light</button>
-        <button onclick="setPattern(47)">Binary Code</button>
-        <button onclick="setPattern(48)">Rave</button>
-        <button onclick="setPattern(49)">Sunset</button>
-        <button onclick="setPattern(50)">Campfire</button>
-        <button onclick="setPattern(51)">Sparkler</button>
-        <button onclick="setPattern(52)">Lighthouse</button>
-        <button onclick="setPattern(53)">SOS Morse</button>
-        <button onclick="setPattern(54)">Meteor Shower</button>
-        <button onclick="setPattern(55)">Rainbow Spiral</button>
-        <button onclick="setPattern(56)">Lava Flow</button>
-        <button onclick="setPattern(57)">Ice Cave</button>
-        <button onclick="setPattern(58)">Fireflies</button>
-        <button onclick="setPattern(59)">Circus</button>
-
-        <button onclick="setPattern(60)">Warp Speed</button>
-        <button onclick="setPattern(61)">Radar Sweep</button>
-        <button onclick="setPattern(62)">Equalizer Bars</button>
-        <button onclick="setPattern(63)">Snake</button>
-        <button onclick="setPattern(64)">Pulse Wave</button>
-        <button onclick="setPattern(65)">Color Explosion</button>
-        <button onclick="setPattern(66)">Digital Rain</button>
-        <button onclick="setPattern(67)">Heartbeat Wave</button>
-        <button onclick="setPattern(68)">Thunderstorm</button>
-        <button onclick="setPattern(69)">Rainbow Fade</button>
-        <button onclick="setPattern(70)">Disco Strobe</button>
-        <button onclick="setPattern(71)">Biohazard</button>
-        <button onclick="setPattern(72)">Ocean Depth</button>
-        <button onclick="setPattern(73)">Pixel Sort</button>
-        <button onclick="setPattern(74)">Glitch</button>
-        <button onclick="setPattern(75)">Tron</button>
-        <button onclick="setPattern(76)">Ember</button>
-        <button onclick="setPattern(77)">Aurora Borealis</button>
-        <button onclick="setPattern(78)">Neon Pulse</button>
-        <button onclick="setPattern(79)">Rainbow Ripple</button>
-
-        <button onclick="setPattern(80)">Kaleidoscope</button>
-        <button onclick="setPattern(81)">DNA Helix</button>
-        <button onclick="setPattern(82)">Fireworks</button>
-        <button onclick="setPattern(83)">VU Meter</button>
-        <button onclick="setPattern(84)">Spinning Wheel</button>
-        <button onclick="setPattern(85)">Color Bands</button>
-        <button onclick="setPattern(86)">Starfield</button>
-        <button onclick="setPattern(87)">Binary Counter</button>
-        <button onclick="setPattern(88)">Breathing Rainbow</button>
-        <button onclick="setPattern(89)">Wave Interference</button>
-        <button onclick="setPattern(90)">Bouncing Ball</button>
-        <button onclick="setPattern(91)">Color Temperature</button>
-        <button onclick="setPattern(92)">Police Siren</button>
-        <button onclick="setPattern(93)">Candy Stripes</button>
-        <button onclick="setPattern(94)">Pixel Rain</button>
-        <button onclick="setPattern(95)">Energy Field</button>
-        <button onclick="setPattern(96)">Orbit</button>
-        <button onclick="setPattern(97)">Pulse Ring</button>
-        <button onclick="setPattern(98)">Random Walk</button>
-        <button onclick="setPattern(99)">Supernova</button>
-
-        <button onclick="setPattern(5)">Confetti</button>
-        <button onclick="setPattern(6)">Sinelon (Cylon)</button>
-        <button onclick="setPattern(7)">BPM Pulse</button>
-        <button onclick="setPattern(8)">Juggle</button>
-        <button onclick="setPattern(9)">Fire</button>
+        <button class="draw-btn active" onclick="setTool('draw')">✏️ Draw</button>
+        <button class="erase-btn" onclick="setTool('erase')">🧹 Erase</button>
+        <button class="fill-btn" onclick="fillAll()">🎨 Fill</button>
+        <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
+        <div class="color-picker">
+          <input type="color" id="colorPicker" value="#ff0000">
+        </div>
       </div>
-    </div>
 
-    <div id="tab-2d" class="tab-content">
-      <div class="controls">
-        <button onclick="setPattern(100)">Horizontal Bars</button>
-        <button onclick="setPattern(101)">Vertical Ripple</button>
-        <button onclick="setPattern(102)">2D Fire Rising</button>
-        <button onclick="setPattern(103)">Rain Drops</button>
-        <button onclick="setPattern(104)">Vertical Equalizer</button>
-        <button onclick="setPattern(105)">Scanning Lines</button>
-        <button onclick="setPattern(106)">Checkerboard</button>
-        <button onclick="setPattern(107)">Diagonal Sweep</button>
-        <button onclick="setPattern(108)">Vertical Wave</button>
-        <button onclick="setPattern(109)">Plasma 2D</button>
-
-        <button onclick="setPattern(110)">Matrix Rain 2D</button>
-        <button onclick="setPattern(111)">Game of Life</button>
-        <button onclick="setPattern(112)">Wave Pool</button>
-        <button onclick="setPattern(113)">Aurora 2D</button>
-        <button onclick="setPattern(114)">Lava Lamp 2D</button>
-        <button onclick="setPattern(115)">2D Ripple</button>
-        <button onclick="setPattern(116)">Starfield Parallax</button>
-        <button onclick="setPattern(117)">Side Fire</button>
-        <button onclick="setPattern(118)">Scrolling Rainbow</button>
-        <button onclick="setPattern(119)">Particle Fountain</button>
-        <button onclick="setPattern(121)">Test Card</button>
+      <div class="settings">
+        <div class="setting-row">
+          <label>Layout:</label>
+          <select id="layoutSelect" onchange="changeLayout()">
+            <option value="32x32">32 x 32 (4 Panels Vertical)</option>
+            <option value="128x8">128 x 8 (4 Panels Horizontal)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Scroll Speed (0=Static):</label>
+          <input type="number" id="scrollSpeed" value="0" min="0" max="200">
+        </div>
       </div>
+
+      <button class="upload-btn" onclick="uploadToESP()">🚀 Upload to ESP8266</button>
+      <div id="status" class="status"></div>
     </div>
 
     <div id="tab-text" class="tab-content">
       <div class="settings">
         <div class="setting-row">
-          <label>Message:</label>
-          <input type="text" id="scrollText" value="HELLO WORLD" style="text-transform: uppercase;">
+          <label>Text to Scroll:</label>
+          <input type="text" id="scrollText" value="HELLO WORLD" placeholder="Enter text..." style="width: 200px;">
         </div>
-        <button class="upload-btn" onclick="sendText()">📜 Send Text</button>
+        <div style="margin-top: 10px; text-align: center;">
+          <button class="upload-btn" onclick="sendText()">📨 Send Text</button>
+        </div>
       </div>
     </div>
 
-    <div id="tab-basic" class="tab-content">
-      <div class="controls">
-        <button style="background:#ff4444" onclick="setPattern(1)">Red</button>
-        <button style="background:#44ff44; color:black" onclick="setPattern(2)">Green</button>
-        <button style="background:#4444ff" onclick="setPattern(3)">Blue</button>
-        <button style="background:#555" onclick="setPattern(4)">⚫ Turn Off</button>
-      </div>
-    </div>
-  </div>
+    <script>
+      let GRID_WIDTH = 32;
+      let GRID_HEIGHT = 32;
+      const CELL_WIDTH = 20;
+      const CELL_HEIGHT = 20;
 
-  <script>
-    const GRID_WIDTH = 144;
-    const GRID_HEIGHT = 9;
-    const CELL_WIDTH = 10;
-    const CELL_HEIGHT = 72; // ~7.2:1 aspect ratio (50mm / 6.9mm)
+      // Removed global canvas/ctx to avoid stale references
 
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+      let currentTool = 'draw';
+      let currentColor = '#ff0000';
+      let isDrawing = false;
+      let pattern = [];
 
-    // Update canvas size
-    canvas.width = GRID_WIDTH * CELL_WIDTH;
-    canvas.height = GRID_HEIGHT * CELL_HEIGHT;
+      // Initialize
+      function init() {
+        const canvas = document.getElementById('canvas');
+        // Update canvas size
+        canvas.width = GRID_WIDTH * CELL_WIDTH;
+        canvas.height = GRID_HEIGHT * CELL_HEIGHT;
 
-    let currentTool = 'draw';
-    let currentColor = '#ff0000';
-    let isDrawing = false;
-
-    // Pattern data: 2D array of RGB values
-    let pattern = Array(GRID_HEIGHT).fill(null).map(() =>
-      Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
-    );
-
-    // Initialize
-    function init() {
-      clearCanvas();
-      setupEvents();
-    }
-
-    // Unified pointer event handler (works for both mouse and touch)
-    function getGridCoordinates(clientX, clientY) {
-      const rect = canvas.getBoundingClientRect();
-
-      // Calculate scale factor
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-
-      // Get position on canvas
-      const canvasX = (clientX - rect.left) * scaleX;
-      const canvasY = (clientY - rect.top) * scaleY;
-
-      // Convert to grid coordinates
-      const x = Math.floor(canvasX / CELL_WIDTH);
-      const y = Math.floor(canvasY / CELL_HEIGHT);
-
-      return { x, y };
-    }
-
-    function handlePointerDown(clientX, clientY) {
-      isDrawing = true;
-      drawPixel(clientX, clientY);
-    }
-
-    function handlePointerMove(clientX, clientY) {
-      if (!isDrawing) return;
-      drawPixel(clientX, clientY);
-    }
-
-    function handlePointerUp() {
-      isDrawing = false;
-    }
-
-    function drawPixel(clientX, clientY) {
-      const { x, y } = getGridCoordinates(clientX, clientY);
-
-      if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-        if (currentTool === 'draw') {
-          pattern[y][x] = hexToRgb(currentColor);
-        } else if (currentTool === 'erase') {
-          pattern[y][x] = [0, 0, 0];
+        // Reset pattern if dimensions changed or first run
+        if (pattern.length !== GRID_HEIGHT || pattern[0].length !== GRID_WIDTH) {
+          pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+            Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+          );
         }
+
+        setupEvents();
         redrawCanvas();
       }
-    }
 
-    function setupEvents() {
-      // Mouse events
-      canvas.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        handlePointerDown(e.clientX, e.clientY);
-      });
+      async function changeLayout() {
+        const layout = document.getElementById('layoutSelect').value;
+        let rows, cols;
 
-      canvas.addEventListener('mousemove', (e) => {
-        handlePointerMove(e.clientX, e.clientY);
-      });
-
-      canvas.addEventListener('mouseup', () => handlePointerUp());
-      canvas.addEventListener('mouseleave', () => handlePointerUp());
-
-      // Touch events
-      canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        handlePointerDown(touch.clientX, touch.clientY);
-      });
-
-      canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        handlePointerMove(touch.clientX, touch.clientY);
-      });
-
-      canvas.addEventListener('touchend', () => handlePointerUp());
-
-      // Color picker
-      document.getElementById('colorPicker').addEventListener('change', (e) => {
-        currentColor = e.target.value;
-      });
-    }
-
-    function setTool(tool) {
-      currentTool = tool;
-      document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
-      if (tool === 'draw') document.querySelector('.draw-btn').classList.add('active');
-      if (tool === 'erase') document.querySelector('.erase-btn').classList.add('active');
-    }
-
-    function clearCanvas() {
-      pattern = Array(GRID_HEIGHT).fill(null).map(() =>
-        Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
-      );
-      redrawCanvas();
-    }
-
-    function fillAll() {
-      const rgb = hexToRgb(currentColor);
-      pattern = Array(GRID_HEIGHT).fill(null).map(() =>
-        Array(GRID_WIDTH).fill(null).map(() => [...rgb])
-      );
-      redrawCanvas();
-    }
-
-    function redrawCanvas() {
-      // Clear canvas
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw pixels (with gaps)
-      // We draw the LED as a square (CELL_WIDTH x CELL_WIDTH) centered vertically in the cell
-      const ledHeight = CELL_WIDTH; // Square pixels
-      const yOffset = (CELL_HEIGHT - ledHeight) / 2;
-
-      for (let y = 0; y < GRID_HEIGHT; y++) {
-        for (let x = 0; x < GRID_WIDTH; x++) {
-          const [r, g, b] = pattern[y][x];
-
-          // Draw the LED as a circle centered in the cell
-          const centerX = x * CELL_WIDTH + CELL_WIDTH / 2;
-          const centerY = y * CELL_HEIGHT + yOffset + ledHeight / 2;
-          const radius = (CELL_WIDTH / 2) - 1; // Slightly smaller than cell width for padding
-
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-
-          // Draw the "off" state
-          ctx.fillStyle = '#222';
-          ctx.fill();
-
-          // Outline
-          ctx.strokeStyle = '#444';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          if (r > 0 || g > 0 || b > 0) {
-            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-            ctx.fill();
-          }
-        }
-      }
-
-      // Draw grid (lanes)
-      ctx.strokeStyle = '#222';
-      ctx.lineWidth = 1;
-
-      // Vertical lines (every 10 pixels)
-      for (let x = 0; x <= GRID_WIDTH; x++) {
-        ctx.beginPath();
-        ctx.moveTo(x * CELL_WIDTH, 0);
-        ctx.lineTo(x * CELL_WIDTH, canvas.height);
-        ctx.stroke();
-      }
-
-      // Horizontal lines (every 72 pixels - showing the strips)
-      for (let y = 0; y <= GRID_HEIGHT; y++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y * CELL_HEIGHT);
-        ctx.lineTo(canvas.width, y * CELL_HEIGHT);
-        ctx.stroke();
-      }
-    }
-
-    function hexToRgb(hex) {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? [
-        parseInt(result[1], 16),
-        parseInt(result[2], 16),
-        parseInt(result[3], 16)
-      ] : [255, 0, 0];
-    }
-
-    function openTab(tabName) {
-      // Hide all tab content
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      // Deactivate all tab buttons
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-
-      // Show selected tab content
-      document.getElementById(tabName).classList.add('active');
-      // Activate selected tab button
-      event.currentTarget.classList.add('active');
-    }
-
-    function showStatus(message, type = 'info') {
-      const statusDiv = document.getElementById('status');
-      statusDiv.textContent = message;
-      statusDiv.className = 'status ' + type;
-      statusDiv.style.display = 'block';
-      setTimeout(() => statusDiv.style.display = 'none', 5000);
-    }
-
-    async function setPattern(mode) {
-      showStatus(`Setting pattern ${mode}...`, 'info');
-      try {
-        // Use local proxy endpoint
-        const response = await fetch(`/api/set?m=${mode}`);
-        if (response.ok) {
-          showStatus(`✅ Pattern ${mode} set!`, 'success');
+        if (layout === '128x8') {
+          GRID_WIDTH = 128;
+          GRID_HEIGHT = 8;
+          document.querySelector('.info').textContent = "128 × 8 Grid | 4 Horizontal Panels";
+          rows = 1;
+          cols = 4;
         } else {
-          showStatus('❌ Failed to set pattern', 'error');
+          GRID_WIDTH = 32;
+          GRID_HEIGHT = 32;
+          document.querySelector('.info').textContent = "32 × 32 Grid | 4 Vertical Panels";
+          rows = 4;
+          cols = 1;
         }
-      } catch (error) {
-        showStatus('❌ Error: ' + error.message, 'error');
+
+        // Reset pattern for new layout
+        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+          Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+        );
+
+        init();
+
+        // Sync with ESP8266
+        try {
+          await fetch(`/api/setPanels?rows=${rows}&cols=${cols}`);
+          showStatus(`Layout changed to ${layout}`, 'success');
+        } catch (e) {
+          console.error("Failed to sync layout", e);
+        }
       }
-    }
 
-    async function uploadToESP() {
-      const scrollSpeed = parseInt(document.getElementById('scrollSpeed').value);
+      function getGridCoordinates(clientX, clientY) {
+        const canvas = document.getElementById('canvas');
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const canvasX = (clientX - rect.left) * scaleX;
+        const canvasY = (clientY - rect.top) * scaleY;
+        const x = Math.floor(canvasX / CELL_WIDTH);
+        const y = Math.floor(canvasY / CELL_HEIGHT);
+        return { x, y };
+      }
 
-      showStatus('Uploading...', 'info');
+      function handlePointerDown(clientX, clientY) {
+        isDrawing = true;
+        drawPixel(clientX, clientY);
+      }
 
-      try {
-        // Convert to dense hex format (RRGGBB)
-        let hexData = "";
-        let pixelCount = 0;
+      function handlePointerMove(clientX, clientY) {
+        if (!isDrawing) return;
+        drawPixel(clientX, clientY);
+      }
+
+      function handlePointerUp() {
+        isDrawing = false;
+      }
+
+      function drawPixel(clientX, clientY) {
+        const { x, y } = getGridCoordinates(clientX, clientY);
+        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+          if (currentTool === 'draw') {
+            pattern[y][x] = hexToRgb(currentColor);
+          } else if (currentTool === 'erase') {
+            pattern[y][x] = [0, 0, 0];
+          }
+          redrawCanvas();
+        }
+      }
+
+      function setupEvents() {
+        const canvas = document.getElementById('canvas');
+        // Remove old listeners to avoid duplicates (cloning canvas)
+        const newCanvas = canvas.cloneNode(true);
+        canvas.parentNode.replaceChild(newCanvas, canvas);
+        // We need to re-get the element and context after replacement
+        const freshCanvas = document.getElementById('canvas');
+
+        freshCanvas.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          handlePointerDown(e.clientX, e.clientY);
+        });
+        freshCanvas.addEventListener('mousemove', (e) => {
+          handlePointerMove(e.clientX, e.clientY);
+        });
+        freshCanvas.addEventListener('mouseup', () => handlePointerUp());
+        freshCanvas.addEventListener('mouseleave', () => handlePointerUp());
+
+        freshCanvas.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        freshCanvas.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        freshCanvas.addEventListener('touchend', () => handlePointerUp());
+
+        // Color picker
+        const cp = document.getElementById('colorPicker');
+        const newCp = cp.cloneNode(true);
+        cp.parentNode.replaceChild(newCp, cp);
+        document.getElementById('colorPicker').addEventListener('change', (e) => {
+          currentColor = e.target.value;
+        });
+      }
+
+      function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+        if (tool === 'draw') document.querySelector('.draw-btn').classList.add('active');
+        if (tool === 'erase') document.querySelector('.erase-btn').classList.add('active');
+      }
+
+      function clearCanvas() {
+        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+          Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+        );
+        redrawCanvas();
+      }
+
+      function fillAll() {
+        const rgb = hexToRgb(currentColor);
+        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+          Array(GRID_WIDTH).fill(null).map(() => [...rgb])
+        );
+        redrawCanvas();
+      }
+
+      function redrawCanvas() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+
+        const ledSize = CELL_WIDTH - 2;
 
         for (let y = 0; y < GRID_HEIGHT; y++) {
-          if (y % 2 === 0) {
-            // Even rows: left to right
-            for (let x = 0; x < GRID_WIDTH; x++) {
-              const [r, g, b] = pattern[y][x];
-              hexData += ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-              if (r > 0 || g > 0 || b > 0) pixelCount++;
-            }
-          } else {
-            // Odd rows: right to left (zigzag)
-            for (let x = GRID_WIDTH - 1; x >= 0; x--) {
-              const [r, g, b] = pattern[y][x];
-              hexData += ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-              if (r > 0 || g > 0 || b > 0) pixelCount++;
+          for (let x = 0; x < GRID_WIDTH; x++) {
+            const [r, g, b] = pattern[y][x];
+            const centerX = x * CELL_WIDTH + CELL_WIDTH / 2;
+            const centerY = y * CELL_HEIGHT + CELL_HEIGHT / 2;
+            const radius = ledSize / 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#222';
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            if (r > 0 || g > 0 || b > 0) {
+              ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+              ctx.fill();
+              ctx.shadowBlur = 5;
+              ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
+              ctx.fill();
+              ctx.shadowBlur = 0;
             }
           }
         }
 
-        const payload = JSON.stringify({
-          hex: hexData,
-          scrollSpeed: scrollSpeed
-        });
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 1;
 
-        // Log to debug server
+        for (let x = 0; x <= GRID_WIDTH; x++) {
+          ctx.beginPath();
+          ctx.moveTo(x * CELL_WIDTH, 0);
+          ctx.lineTo(x * CELL_WIDTH, height);
+          if (GRID_WIDTH === 128 && x % 32 === 0 && x > 0 && x < 128) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#555';
+          } else {
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#222';
+          }
+          ctx.stroke();
+        }
+
+        for (let y = 0; y <= GRID_HEIGHT; y++) {
+          ctx.beginPath();
+          ctx.moveTo(0, y * CELL_HEIGHT);
+          ctx.lineTo(width, y * CELL_HEIGHT);
+          if (GRID_HEIGHT === 32 && y % 8 === 0 && y > 0 && y < 32) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#555';
+          } else {
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#222';
+          }
+          ctx.stroke();
+        }
+      }
+
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? [
+          parseInt(result[1], 16),
+          parseInt(result[2], 16),
+          parseInt(result[3], 16)
+        ] : [255, 0, 0];
+      }
+
+      function openTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+      }
+
+      // Tab click handlers
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+          // Already handled by onclick in HTML calling openTab? 
+          // But we need to update active class on buttons too.
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+        });
+      });
+
+      function showStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('status');
+        statusDiv.textContent = message;
+        statusDiv.className = 'status ' + type;
+        statusDiv.style.display = 'block';
+        setTimeout(() => statusDiv.style.display = 'none', 5000);
+      }
+
+      async function setPattern(mode) {
+        showStatus(`Setting pattern ${mode}...`, 'info');
         try {
-          await fetch('http://192.168.1.132:8080/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: payload
-          });
-        } catch (e) { /* Ignore if log server not running */ }
-
-        // Send to ESP8266 via local proxy
-        const response = await fetch(`/api/uploadPattern`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload
-        });
-
-        if (response.ok) {
-          showStatus(`✅ Uploaded ${pixelCount} pixels!`, 'success');
-        } else {
-          showStatus('❌ Upload failed: ' + response.statusText, 'error');
+          const response = await fetch(`/api/set?m=${mode}`);
+          if (response.ok) {
+            showStatus(`✅ Pattern ${mode} set!`, 'success');
+          } else {
+            showStatus('❌ Failed to set pattern', 'error');
+          }
+        } catch (error) {
+          showStatus('❌ Error: ' + error.message, 'error');
         }
-      } catch (error) {
-        showStatus('❌ Error: ' + error.message, 'error');
       }
-    }
 
-    async function sendText() {
-      const text = document.getElementById('scrollText').value;
-      const speed = document.getElementById('scrollSpeed').value;
+      async function uploadToESP() {
+        const scrollSpeed = parseInt(document.getElementById('scrollSpeed').value);
+        showStatus('Uploading...', 'info');
 
-      showStatus(`Sending text: ${text}...`, 'info');
-      try {
-        const response = await fetch(`/api/setText?text=${encodeURIComponent(text)}&speed=${speed}`);
-        if (response.ok) {
-          showStatus('✅ Text sent!', 'success');
-        } else {
-          showStatus('❌ Failed to send text', 'error');
+        try {
+          const numLeds = GRID_WIDTH * GRID_HEIGHT;
+          const sparseData = [];
+
+          for (let x = 0; x < GRID_WIDTH; x++) {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+              const [r, g, b] = pattern[y][x];
+              if (r === 0 && g === 0 && b === 0) continue;
+
+              let stripIndex;
+
+              if (GRID_WIDTH === 32 && GRID_HEIGHT === 32) {
+                // 32x32: 4 Panels Vertical Stack (Serpentine)
+                const panelRow = Math.floor(y / 8);
+                const localX = x;
+                const localY = y % 8;
+                const panelIndex = panelRow;
+                const panelOffset = panelIndex * 256;
+
+                let finalLocalX = localX;
+                let finalLocalY = localY;
+
+                if (panelRow % 2 === 1) {
+                  finalLocalX = 31 - localX;
+                  finalLocalY = 7 - localY;
+                }
+
+                let localIndex;
+                if (finalLocalX % 2 === 0) {
+                  localIndex = finalLocalX * 8 + finalLocalY;
+                } else {
+                  localIndex = finalLocalX * 8 + (7 - finalLocalY);
+                }
+                stripIndex = panelOffset + localIndex;
+
+              } else {
+                // 128x8: 4 Panels Horizontal (Linear)
+                const panelCol = Math.floor(x / 32);
+                const localX = x % 32;
+                const localY = y;
+                const panelIndex = panelCol;
+                const panelOffset = panelIndex * 256;
+
+                let localIndex;
+                if (localX % 2 === 0) {
+                  localIndex = localX * 8 + localY;
+                } else {
+                  localIndex = localX * 8 + (7 - localY);
+                }
+                stripIndex = panelOffset + localIndex;
+              }
+
+              if (stripIndex < numLeds) {
+                sparseData.push([stripIndex, r, g, b]);
+              }
+            }
+          }
+
+          const estimatedRawSize = numLeds * 3;
+          const estimatedSparseSize = sparseData.length * 18;
+
+          if (estimatedSparseSize < estimatedRawSize) {
+            console.log(`Using Sparse format (${estimatedSparseSize} bytes vs ${estimatedRawSize} bytes)`);
+            const payload = JSON.stringify({
+              sparse: sparseData,
+              scrollSpeed: scrollSpeed
+            });
+
+            const response = await fetch(`/api/uploadPattern`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload
+            });
+
+            if (response.ok) {
+              showStatus(`✅ Uploaded!`, 'success');
+            } else {
+              showStatus('❌ Upload failed: ' + response.statusText, 'error');
+            }
+
+          } else {
+            console.log(`Using Raw format (${estimatedRawSize} bytes vs ${estimatedSparseSize} bytes)`);
+
+            const rawData = new Uint8Array(numLeds * 3);
+
+            for (let x = 0; x < GRID_WIDTH; x++) {
+              for (let y = 0; y < GRID_HEIGHT; y++) {
+                const [r, g, b] = pattern[y][x];
+
+                let stripIndex;
+                if (GRID_WIDTH === 32 && GRID_HEIGHT === 32) {
+                  const panelRow = Math.floor(y / 8);
+                  const localX = x;
+                  const localY = y % 8;
+                  const panelIndex = panelRow;
+                  const panelOffset = panelIndex * 256;
+                  let finalLocalX = localX;
+                  let finalLocalY = localY;
+                  if (panelRow % 2 === 1) {
+                    finalLocalX = 31 - localX;
+                    finalLocalY = 7 - localY;
+                  }
+                  let localIndex;
+                  if (finalLocalX % 2 === 0) {
+                    localIndex = finalLocalX * 8 + finalLocalY;
+                  } else {
+                    localIndex = finalLocalX * 8 + (7 - finalLocalY);
+                  }
+                  stripIndex = panelOffset + localIndex;
+                } else {
+                  const panelCol = Math.floor(x / 32);
+                  const localX = x % 32;
+                  const localY = y;
+                  const panelIndex = panelCol;
+                  const panelOffset = panelIndex * 256;
+                  let localIndex;
+                  if (localX % 2 === 0) {
+                    localIndex = localX * 8 + localY;
+                  } else {
+                    localIndex = localX * 8 + (7 - localY);
+                  }
+                  stripIndex = panelOffset + localIndex;
+                }
+
+                if (stripIndex < numLeds) {
+                  rawData[stripIndex * 3] = r;
+                  rawData[stripIndex * 3 + 1] = g;
+                  rawData[stripIndex * 3 + 2] = b;
+                }
+              }
+            }
+
+            const response = await fetch(`/api/uploadRaw?speed=${scrollSpeed}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/octet-stream' },
+              body: rawData
+            });
+
+            if (response.ok) {
+              showStatus(`✅ Uploaded!`, 'success');
+            } else {
+              showStatus('❌ Upload failed: ' + response.statusText, 'error');
+            }
+          }
+        } catch (error) {
+          showStatus('❌ Error: ' + error.message, 'error');
         }
-      } catch (error) {
-        showStatus('❌ Error: ' + error.message, 'error');
       }
-    }
 
-    // Start
-    init();
-  </script>
+      async function sendText() {
+        const text = document.getElementById('scrollText').value;
+        const speed = document.getElementById('scrollSpeed').value;
+
+        showStatus(`Sending text: ${text}...`, 'info');
+        try {
+          const response = await fetch(`/api/setText?text=${encodeURIComponent(text)}&speed=${speed}`);
+          if (response.ok) {
+            showStatus('✅ Text sent!', 'success');
+          } else {
+            showStatus('❌ Failed to send text', 'error');
+          }
+        } catch (error) {
+          showStatus('❌ Error: ' + error.message, 'error');
+        }
+      }
+
+      // Start
+      init();
+    </script>
 </body>
 
 </html>

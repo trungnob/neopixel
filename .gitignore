@@ -1,11 +1,12 @@
 .pio/
-.venv/
 .platformio/
+.venv/
+__pycache__/
+*.pyc
+*.log
+build_log.txt
 artifacts/
-.pioenvs/
-.piolibdeps/
 config/ota.env
 config/secrets.env
+ui_preview.html
 .DS_Store
-*.pyc
-*.bin

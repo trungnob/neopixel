@@ -28,6 +28,11 @@ class ProxyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             target_url = f"http://{ESP_IP}/set?{query}"
             print(f"Relaying to: {target_url}")
             self.relay_request(target_url)
+        elif self.path.startswith("/api/patterns"):
+            # Relay GET /api/patterns to http://ESP_IP/api/patterns
+            target_url = f"http://{ESP_IP}/api/patterns"
+            print(f"Relaying to: {target_url}")
+            self.relay_request(target_url)
         else:
             # Serve static files from the 'web' directory
             if self.path == "/" or self.path == "":
@@ -58,6 +63,29 @@ class ProxyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     print(f"ESP response: {response.status}")
                     self.send_response(response.status)
                     self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(response.read())
+            except Exception as e:
+                print(f"Proxy error: {str(e)}")
+                self.send_error(500, f"Proxy error: {str(e)}")
+        elif self.path.startswith("/api/uploadRaw"):
+            # Relay POST /api/uploadRaw to http://ESP_IP/uploadRaw
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            # Preserve query parameters (e.g. ?speed=80)
+            query = urllib.parse.urlparse(self.path).query
+            target_url = f"http://{ESP_IP}/uploadRaw?{query}"
+            print(f"Relaying RAW POST to: {target_url}")
+            
+            try:
+                req = urllib.request.Request(target_url, data=post_data, method='POST')
+                req.add_header('Content-Type', 'application/octet-stream')
+                
+                with urllib.request.urlopen(req) as response:
+                    print(f"ESP response: {response.status}")
+                    self.send_response(response.status)
+                    self.send_header('Content-type', 'text/plain')
                     self.end_headers()
                     self.wfile.write(response.read())
             except Exception as e:
