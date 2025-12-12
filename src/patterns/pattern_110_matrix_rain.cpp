@@ -3,7 +3,7 @@
 
 // Matrix Rain 2D - Proper Matrix effect with columns
 void pattern_matrix_rain(CRGB* leds, int activeLeds, uint8_t& hue) {
-static uint8_t drops[GRID_WIDTH];
+static uint8_t drops[144];  // Max width (144 for 9x144 layout)
           static bool initialized110 = false;
 
           if (!initialized110) {
@@ -20,9 +20,9 @@ static uint8_t drops[GRID_WIDTH];
             int led = XY(x, drops[x]);
             if (led >= 0) leds[led] = CRGB::Green;
 
-            // Move drop down
+            // Move drop down (increment Y)
             if (random8() < 100) {
-              drops[x] = (drops[x] - 1 + GRID_HEIGHT) % GRID_HEIGHT;
+              drops[x] = (drops[x] + 1) % GRID_HEIGHT;
             }
           }
 }

@@ -1,0 +1,198 @@
+PIO_ENV="d1_mini" PORT="" BAUD="115200" FLASH_BAUD="921600" FLASH_SIZE="0x400000" OUT_DIR="artifacts" scripts/device.sh build
+[device.sh] Compiling (d1_mini)
+Processing d1_mini (platform: espressif8266; board: d1_mini; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif8266/d1_mini.html
+PLATFORM: Espressif 8266 (4.2.1) > WeMos D1 R2 and mini
+HARDWARE: ESP8266 80MHz, 80KB RAM, 4MB Flash
+PACKAGES: 
+ - framework-arduinoespressif8266 @ 3.30102.0 (3.1.2) 
+ - tool-esptool @ 1.413.0 (4.13) 
+ - tool-esptoolpy @ 1.30000.201119 (3.0.0) 
+ - toolchain-xtensa @ 2.100300.220621 (10.3.0)
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 38 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- FastLED @ 3.10.3
+|-- ArduinoOTA @ 1.0
+|-- ESP8266WebServer @ 1.0
+|-- ESP8266WiFi @ 1.0
+Building in release mode
+Compiling .pio/build/d1_mini/src/main.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_118_scrolling_rainbow.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_119_particle_fountain.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_120_scrolling_text.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_121_test_card.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_123_fireflies.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_125_clock.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_enumerate.cpp.o
+Compiling .pio/build/d1_mini/src/patterns/pattern_extras.cpp.o
+Generating LD script .pio/build/d1_mini/ld/local.eagle.app.v6.common.ld
+Compiling .pio/build/d1_mini/libd2c/SoftwareSerial/SoftwareSerial.cpp.o
+Compiling .pio/build/d1_mini/lib3cc/SPI/SPI.cpp.o
+Compiling .pio/build/d1_mini/lib302/I2S/I2S.cpp.o
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_118_scrolling_rainbow.cpp:2:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/platform.h:63,
+                 from src/patterns.h:4,
+                 from src/main.cpp:1:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_119_particle_fountain.cpp:2:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_120_scrolling_text.cpp:2:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_121_test_card.cpp:2:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_enumerate.cpp:1:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_extras.cpp:1:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_123_fireflies.cpp:1:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/patterns/pattern_extras.cpp: In function 'void pattern_fireworks(CRGB*, int, uint8_t&)':
+src/patterns/pattern_extras.cpp:160:11: warning: unused variable 'x' [-Wunused-variable]
+  160 |       int x = centerX + (cos8(i * 32) * radius) / 255;
+      |           ^
+src/patterns/pattern_extras.cpp:161:11: warning: unused variable 'y' [-Wunused-variable]
+  161 |       int y = centerY + (sin8(i * 32) * radius) / 255;
+      |           ^
+src/main.cpp: In function 'void renderPatternFrame(int, CRGB*, int, uint8_t&, String&, int&, int)':
+src/main.cpp:849:30: warning: comparison of integer expressions of different signedness: 'long unsigned int' and 'long int' [-Wsign-compare]
+  849 |     if (millis() - lastFlash > random(100, 1000)) {
+      |         ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+src/main.cpp:954:48: warning: narrowing conversion of '(activeLeds / 3)' from 'int' to 'float' [-Wnarrowing]
+  954 |     static float positions[3] = {0, activeLeds / 3, activeLeds * 2 / 3};
+      |                                     ~~~~~~~~~~~^~~
+src/main.cpp:954:68: warning: narrowing conversion of '((activeLeds * 2) / 3)' from 'int' to 'float' [-Wnarrowing]
+  954 |     static float positions[3] = {0, activeLeds / 3, activeLeds * 2 / 3};
+      |                                                     ~~~~~~~~~~~~~~~^~~
+src/main.cpp:1140:30: warning: comparison of integer expressions of different signedness: 'long unsigned int' and 'int' [-Wsign-compare]
+ 1140 |     if (millis() - lastBlink > dotTime * pattern[patternIdx]) {
+      |         ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/main.cpp:1789:5: error: 'pattern_spiral_galaxy' was not declared in this scope
+ 1789 |     pattern_spiral_galaxy(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~~~~~~~~~
+src/main.cpp:1792:5: error: 'pattern_shooting_stars' was not declared in this scope
+ 1792 |     pattern_shooting_stars(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~~~~~~~~~~
+src/main.cpp:1795:5: error: 'pattern_fireworks' was not declared in this scope; did you mean 'pattern_fireflies'?
+ 1795 |     pattern_fireworks(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~~~~~
+      |     pattern_fireflies
+src/main.cpp:1798:5: error: 'pattern_dna' was not declared in this scope; did you mean 'pattern_clock'?
+ 1798 |     pattern_dna(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~
+      |     pattern_clock
+src/main.cpp:1801:5: error: 'pattern_radar' was not declared in this scope
+ 1801 |     pattern_radar(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~
+In file included from .pio/libdeps/d1_mini/FastLED/src/FastLED.h:100,
+                 from src/patterns/../platform.h:63,
+                 from src/patterns/../patterns.h:4,
+                 from src/patterns/pattern_125_clock.cpp:1:
+.pio/libdeps/d1_mini/FastLED/src/fastspi.h:173:23: note: '#pragma message: WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin'
+  173 | #      pragma message "WARNING: The SPI pins you chose have not been marked as hardware accelerated within the code base. All SPI access will default to bitbanged output. Consult the data sheet for hardware spi pins designed for efficient SPI transfer, typically via DMA / MOSI / SCK / SS pin"
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/main.cpp:1804:5: error: 'pattern_snake' was not declared in this scope
+ 1804 |     pattern_snake(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~
+src/main.cpp:1807:5: error: 'pattern_spectrum' was not declared in this scope
+ 1807 |     pattern_spectrum(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~~~~
+src/main.cpp:1810:5: error: 'pattern_sinewave_3d' was not declared in this scope; did you mean 'pattern_ripple_2d'?
+ 1810 |     pattern_sinewave_3d(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~~~~~~~
+      |     pattern_ripple_2d
+Archiving .pio/build/d1_mini/lib3cc/libSPI.a
+src/main.cpp:1813:5: error: 'pattern_confetti' was not declared in this scope
+ 1813 |     pattern_confetti(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~~~~
+src/main.cpp:1816:5: error: 'pattern_breathing' was not declared in this scope; did you mean 'pattern_fire_rising'?
+ 1816 |     pattern_breathing(leds, activeLeds, hue);
+      |     ^~~~~~~~~~~~~~~~~
+      |     pattern_fire_rising
+Indexing .pio/build/d1_mini/lib3cc/libSPI.a
+src/patterns/pattern_125_clock.cpp: In function 'void pattern_clock(CRGB*, int, uint8_t&, int&, int)':
+src/patterns/pattern_125_clock.cpp:14:8: warning: unused variable 'timeStr' [-Wunused-variable]
+   14 |   char timeStr[16];
+      |        ^~~~~~~
+src/patterns/pattern_125_clock.cpp:25:24: warning: unused variable 'font3x7' [-Wunused-variable]
+   25 |   static const uint8_t font3x7[][3] = {
+      |                        ^~~~~~~
+src/patterns/pattern_125_clock.cpp:40:8: warning: variable 'getTinyFontIdx' set but not used [-Wunused-but-set-variable]
+   40 |   auto getTinyFontIdx = [](char c) -> int {
+      |        ^~~~~~~~~~~~~~
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatDbg.cpp.o
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatFile.cpp.o
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatFilePrint.cpp.o
+Archiving .pio/build/d1_mini/libd2c/libSoftwareSerial.a
+Indexing .pio/build/d1_mini/libd2c/libSoftwareSerial.a
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatFileWrite.cpp.o
+Archiving .pio/build/d1_mini/lib302/libI2S.a
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatFormatter.cpp.o
+Indexing .pio/build/d1_mini/lib302/libI2S.a
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatName.cpp.o
+src/patterns/pattern_enumerate.cpp: In function 'void pattern_enumerate(CRGB*, int, uint8_t&)':
+src/patterns/pattern_enumerate.cpp:22:22: warning: '%d' directive writing between 1 and 10 bytes into a region of size 4 [-Wformat-overflow=]
+   22 |     sprintf(numStr, "%d", i);
+      |                      ^~
+src/patterns/pattern_enumerate.cpp:22:21: note: directive argument in the range [0, 2147483647]
+   22 |     sprintf(numStr, "%d", i);
+      |                     ^~~~
+src/patterns/pattern_enumerate.cpp:22:12: note: 'sprintf' output between 2 and 11 bytes into a destination of size 4
+   22 |     sprintf(numStr, "%d", i);
+      |     ~~~~~~~^~~~~~~~~~~~~~~~~
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatPartition.cpp.o
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/ExFatLib/ExFatVolume.cpp.o
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/FatLib/FatDbg.cpp.o
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/FatLib/FatFile.cpp.o
+Compiling .pio/build/d1_mini/libb06/ESP8266SdFat/FatLib/FatFileLFN.cpp.o
+*** [.pio/build/d1_mini/src/main.cpp.o] Error 1
+========================== [FAILED] Took 1.85 seconds ==========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+d1_mini        FAILED    00:00:01.853
+==================== 1 failed, 0 succeeded in 00:00:01.853 ====================
+make: *** [Makefile:30: build] Error 1

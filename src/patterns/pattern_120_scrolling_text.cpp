@@ -3,74 +3,127 @@
 #include <string.h>
 
 // Scrolling Text - Aspect-ratio corrected for 7.2:1 physical spacing
-void pattern_scrolling_text(CRGB* leds, int activeLeds, uint8_t& hue,
-                           const char* text, int& scrollOffset, int scrollSpeed) {
-fill_solid(leds, activeLeds, CRGB::Black);
+void pattern_scrolling_text(CRGB *leds, int activeLeds, uint8_t &hue,
+                            const char *text, int &scrollOffset,
+                            int scrollSpeed) {
+  fill_solid(leds, activeLeds, CRGB::Black);
 
-          // Aspect ratio compensation: vertical is 7.2x taller than horizontal
-          // To make letters look square, make them ~7x wider in LED count
-          const int scaleX = 7;  // Horizontal scale (to compensate for tight spacing)
-          const int scaleY = 1;  // Vertical scale (keep it 1:1 since spacing is already wide)
-          const int charSpacing = 5;  // Gap between characters
+  // Aspect ratio compensation:
+  // 9x144 layout has 7.25:1 spacing (needs horizontal stretching)
+  // 8x32/32x32 layouts have 1:1 spacing (no stretching needed)
 
-          // Calculate scaled dimensions
-          int scaledFontWidth = FONT_WIDTH * scaleX;
-          int scaledFontHeight = FONT_HEIGHT * scaleY;
-          int charWidth = scaledFontWidth + charSpacing;
+  int scaleX = 1;
+  // Only stretch if aspect ratio is significantly non-square (like the 7.25:1
+  // of 9x144) Explicitly force 1x for Multi-Panel (layout 2) and Single Panel
+  // (layout 1)
+  if (currentLayout == 0 && ASPECT_RATIO > 4.0) {
+    scaleX = 7; // Stretch ONLY for 9x144
+  }
 
-          // Calculate total text width
-          int textLen = strlen(text);
-          int textWidth = textLen * charWidth;
+  const int scaleY = 1;                         // Vertical scale usually 1:1
+  const int charSpacing = (scaleX > 1) ? 5 : 1; // Gap between characters
 
-          // Draw each character
-          for(int charIdx = 0; charIdx < textLen; charIdx++) {
-            char c = text[charIdx];
-            int fontIdx = getFontIndex(c);
+  // Calculate scaled dimensions
+  int scaledFontWidth = FONT_WIDTH * scaleX;
+  int scaledFontHeight = FONT_HEIGHT * scaleY;
 
-            // Starting X position for this character
-            int charX = GRID_WIDTH + charIdx * charWidth - scrollOffset;
+  int charWidth = scaledFontWidth + charSpacing;
 
-            // Only draw if character is visible on screen
-            if (charX < GRID_WIDTH && charX + scaledFontWidth > 0) {
-              // Draw each column of the character
-              for(int col = 0; col < FONT_WIDTH; col++) {
-                uint8_t columnData = pgm_read_byte(&font5x7[fontIdx][col]);
+  // Calculate total text width
+  int textLen = strlen(text);
+  int textWidth = textLen * charWidth;
 
-                // Draw each row of the column
-                for(int row = 0; row < FONT_HEIGHT; row++) {
-                  if (columnData & (1 << row)) {
-                    // Scale pixels with aspect ratio compensation
-                    for(int dy = 0; dy < scaleY; dy++) {
-                      for(int dx = 0; dx < scaleX; dx++) {
-                        // Calculate position on grid (use all 9 rows, no centering)
-                        int y = row * scaleY + dy + 1;  // Start at row 1
-                        int x = charX + col * scaleX + dx;
+  // Vertical centering
+  int yOffset = (GRID_HEIGHT - scaledFontHeight) / 2;
 
-                        // Only draw if within grid bounds
-                        if (y >= 0 && y < GRID_HEIGHT && x >= 0 && x < GRID_WIDTH) {
-                          int led = XY(x, y);
-                          if (led >= 0) {
-                            leds[led] = CHSV(hue, 255, 255);
-                          }
-                        }
-                      }
-                    }
-                  }
+  // Smooth Scrolling Logic
+  // Use a static float to accumulate sub-pixel movements
+  static float smoothScrollPos = 0.0f;
+  static unsigned long lastUpdate = 0;
+
+  int currentScrollX = 0;
+
+  // Auto-center if text fits on screen
+  if (textWidth <= GRID_WIDTH) {
+    // Center the text and don't scroll
+    currentScrollX = (GRID_WIDTH - textWidth) / 2;
+    // Reset scroll pos so if text changes to longer, it starts correctly
+    smoothScrollPos = -GRID_WIDTH;
+  } else {
+    // Text is longer than screen, scroll it
+
+    // Detect external reset (e.g. from Web UI setting scrollOffset = 0)
+    if (abs(scrollOffset - smoothScrollPos) > 10.0f) {
+      if (scrollOffset == 0) {
+        smoothScrollPos = -GRID_WIDTH; // Reset to start (entering from right)
+      } else {
+        smoothScrollPos = scrollOffset;
+      }
+    }
+
+    unsigned long now = millis();
+    float dt = (now - lastUpdate) / 1000.0f; // Delta time in seconds
+    lastUpdate = now;
+
+    // Prevent huge jumps if loop was blocked or first run
+    if (dt > 0.1f)
+      dt = 0.0f;
+
+    // Map scrollSpeed (1-100) to pixels per second
+    float pixelsPerSecond = 2.0f + (scrollSpeed * 0.5f);
+
+    smoothScrollPos += pixelsPerSecond * dt;
+
+    // Wrap around
+    if (smoothScrollPos > textWidth + 20) {
+      smoothScrollPos = -GRID_WIDTH;
+    }
+
+    currentScrollX = (int)smoothScrollPos;
+  }
+
+  // Update the global scrollOffset just for state consistency
+  scrollOffset = currentScrollX;
+
+  // Draw each character
+  for (int charIdx = 0; charIdx < textLen; charIdx++) {
+    char c = text[charIdx];
+    int fontIdx = getFontIndex(c);
+
+    // Starting X position for this character
+    int charX = charIdx * charWidth - currentScrollX;
+
+    // Only draw if character is visible on screen
+    if (charX < GRID_WIDTH && charX + scaledFontWidth > 0) {
+      // Draw each column of the character
+      for (int col = 0; col < FONT_WIDTH; col++) {
+        uint8_t columnData = pgm_read_byte(&font5x7[fontIdx][col]);
+
+        // Draw each row of the column
+        for (int row = 0; row < FONT_HEIGHT; row++) {
+          if (columnData & (1 << row)) {
+            // Draw scaled pixel(s)
+            for (int sx = 0; sx < scaleX; sx++) {
+              for (int sy = 0; sy < scaleY; sy++) {
+                int x = charX + col * scaleX + sx;
+                int y = yOffset + row * scaleY + sy;
+
+                // Rainbow effect: Hue depends on X position + time (hue
+                // variable) This makes the rainbow flow across the text
+                uint8_t pixelHue = hue + (x * 2);
+
+                int ledIdx = XY(x, y);
+                if (ledIdx >= 0) {
+                  leds[ledIdx] = CHSV(pixelHue, 255, 255);
                 }
               }
             }
           }
+        }
+      }
+    }
+  }
 
-          // Scroll the text using configurable speed
-          static unsigned long lastScrollTime = 0;
-          if (millis() - lastScrollTime > scrollSpeed) {
-            scrollOffset++;
-            // Reset when text has fully scrolled off screen
-            if (scrollOffset > GRID_WIDTH + textWidth) {
-              scrollOffset = 0;
-            }
-            lastScrollTime = millis();
-          }
-
-          hue++;
+  // Cycle the base hue to make the rainbow move even if text is stationary
+  hue++;
 }

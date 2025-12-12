@@ -22,7 +22,7 @@ wall_thickness = 1.5;        // Reduced from 2mm to 1.5mm
 
 // LED channel (on front)
 led_channel_depth = 4;       // Shallow groove (reduced from 5mm)
-led_channel_width = 13;      // Strip + tiny clearance
+led_channel_width = 14;      // Increased to 14mm for better fit
 
 // Wire channel (on back)
 wire_channel_width = 8;      // Narrow channel for wires

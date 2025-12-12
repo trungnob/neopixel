@@ -1,0 +1,13 @@
+nohup: ignoring input
+Starting server on port 8080...
+Relaying commands to ESP8266 at 192.168.1.130
+Access at http://localhost:8080/pattern-designer.html
+Traceback (most recent call last):
+  File "/home/trungnob/neopixel/server.py", line 88, in <module>
+    with socketserver.TCPServer(("", PORT), ProxyHTTPRequestHandler) as httpd:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+    self.server_bind()
+  File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
