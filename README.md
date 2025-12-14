@@ -21,6 +21,15 @@ This project drives a **32x32 LED Matrix** (composed of four 8x32 WS2812B panels
 
 ## Getting Started
 
+### 🚀 Quick Start (Recommended)
+Run the automated setup script to configure Wi-Fi, install dependencies, and flash the device:
+```bash
+./scripts/quickstart.sh
+```
+
+### Manual Setup
+If you prefer to set up everything manually:
+
 ### Prerequisites
 - Python 3
 - `pip`

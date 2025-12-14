@@ -33,6 +33,12 @@ class ProxyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             target_url = f"http://{ESP_IP}/api/patterns"
             print(f"Relaying to: {target_url}")
             self.relay_request(target_url)
+        elif self.path.startswith("/api/setPanels"):
+            # Relay GET /api/setPanels to http://ESP_IP/setPanels
+            query = urllib.parse.urlparse(self.path).query
+            target_url = f"http://{ESP_IP}/setPanels?{query}"
+            print(f"Relaying to: {target_url}")
+            self.relay_request(target_url)
         else:
             # Serve static files from the 'web' directory
             if self.path == "/" or self.path == "":

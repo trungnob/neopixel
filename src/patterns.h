@@ -122,6 +122,8 @@ void pattern_test_card(CRGB *leds, int activeLeds, uint8_t &hue);
 void pattern_fireflies(CRGB *leds, int activeLeds, uint8_t &hue);
 void pattern_clock(CRGB *leds, int activeLeds, uint8_t &hue, int &scrollOffset,
                    int scrollSpeed);
+void pattern_ip_clock(CRGB *leds, int activeLeds, uint8_t &hue,
+                      int &scrollOffset, int scrollSpeed);
 
 // Gravity Patterns
 void pattern_bouncing_balls(CRGB *leds, int activeLeds, uint8_t &hue);

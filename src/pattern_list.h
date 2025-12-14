@@ -13,6 +13,7 @@ struct PatternMetadata {
 const PatternMetadata patterns[] = {
     // Animation Patterns
     {125, "Digital Clock", "Animation Patterns"},
+    {200, "IP + Clock", "Animation Patterns"},
     {102, "2D Fire Rising", "Animation Patterns"},
     {109, "Plasma 2D", "Animation Patterns"},
     {110, "Matrix Rain 2D", "Animation Patterns"},

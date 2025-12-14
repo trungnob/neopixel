@@ -5,6 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>LED Pattern Designer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
     * {
       margin: 0;
@@ -278,7 +282,7 @@
         </div>
       </div>
 
-      <button class="upload-btn" onclick="uploadToESP()">🚀 Upload to ESP8266</button>
+      <button class="upload-btn" onclick="uploadPattern()">🚀 Upload to ESP8266</button>
       <div id="status" class="status"></div>
     </div>
 
@@ -294,13 +298,71 @@
       </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal"
+      style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;">
+      <div
+        style="background:#333; margin:100px auto; padding:20px; width:90%; max-width:400px; border-radius:10px; text-align:center;">
+        <h2>Settings</h2>
+        <div class="control-group">
+          <label>ESP8266 IP Address:</label>
+          <input type="text" id="espIpInput" placeholder="192.168.1.130" style="width:100%; margin-top:10px;">
+        </div>
+        <button onclick="saveSettings()" class="btn" style="background:#44ff44; color:black;">Save</button>
+        <button onclick="closeSettings()" class="btn" style="background:#555; margin-top:10px;">Cancel</button>
+      </div>
+    </div>
+
     <script>
       let GRID_WIDTH = 32;
       let GRID_HEIGHT = 32;
       const CELL_WIDTH = 20;
       const CELL_HEIGHT = 20;
 
-      // Removed global canvas/ctx to avoid stale references
+      // API Configuration
+      let espIp = localStorage.getItem('espIp') || window.location.hostname;
+      // If running on localhost/file, default to a common IP or ask user
+      if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if (!localStorage.getItem('espIp')) {
+          espIp = "192.168.1.130"; // Default fallback
+        }
+      }
+
+      function getApiUrl(path) {
+        // If running via the Python proxy (localhost:8000), use relative paths
+        if (window.location.hostname === 'localhost' && window.location.port === '8000') {
+          return path;
+        }
+
+        let targetPath = path;
+        if (path.startsWith('/api/setText')) targetPath = path.replace('/api/setText', '/setText');
+        else if (path.startsWith('/api/set')) targetPath = path.replace('/api/set', '/set');
+        else if (path.startsWith('/api/uploadPattern')) targetPath = path.replace('/api/uploadPattern', '/uploadPattern');
+        else if (path.startsWith('/api/uploadRaw')) targetPath = path.replace('/api/uploadRaw', '/uploadRaw');
+        else if (path.startsWith('/api/setPanels')) targetPath = path.replace('/api/setPanels', '/setPanels');
+
+        return `http://${espIp}${targetPath}`;
+      }
+
+      function openSettings() {
+        document.getElementById('espIpInput').value = espIp;
+        document.getElementById('settingsModal').style.display = 'block';
+      }
+
+      function closeSettings() {
+        document.getElementById('settingsModal').style.display = 'none';
+      }
+
+      function saveSettings() {
+        const newIp = document.getElementById('espIpInput').value.trim();
+        if (newIp) {
+          espIp = newIp;
+          localStorage.setItem('espIp', espIp);
+          showStatus('Settings saved', 'success');
+          closeSettings();
+          loadPatterns();
+        }
+      }
 
       let currentTool = 'draw';
       let currentColor = '#ff0000';
@@ -310,11 +372,9 @@
       // Initialize
       function init() {
         const canvas = document.getElementById('canvas');
-        // Update canvas size
         canvas.width = GRID_WIDTH * CELL_WIDTH;
         canvas.height = GRID_HEIGHT * CELL_HEIGHT;
 
-        // Reset pattern if dimensions changed or first run
         if (pattern.length !== GRID_HEIGHT || pattern[0].length !== GRID_WIDTH) {
           pattern = Array(GRID_HEIGHT).fill(null).map(() =>
             Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
@@ -323,6 +383,24 @@
 
         setupEvents();
         redrawCanvas();
+
+        // Add Settings Button if not present
+        if (!document.getElementById('settingsBtn')) {
+          const header = document.querySelector('h1');
+          const btn = document.createElement('button');
+          btn.id = 'settingsBtn';
+          btn.className = 'btn';
+          btn.innerHTML = '⚙️';
+          btn.onclick = openSettings;
+          btn.style.marginLeft = '10px';
+          btn.style.background = '#555';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '5px';
+          btn.style.padding = '8px 12px';
+          btn.style.cursor = 'pointer';
+          btn.style.color = '#fff';
+          if (header) header.parentNode.insertBefore(btn, header.nextSibling);
+        }
       }
 
       async function changeLayout() {
@@ -343,19 +421,18 @@
           cols = 1;
         }
 
-        // Reset pattern for new layout
         pattern = Array(GRID_HEIGHT).fill(null).map(() =>
           Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
         );
 
         init();
 
-        // Sync with ESP8266
         try {
-          await fetch(`/api/setPanels?rows=${rows}&cols=${cols}`);
+          await fetch(getApiUrl(`/api/setPanels?rows=${rows}&cols=${cols}`));
           showStatus(`Layout changed to ${layout}`, 'success');
         } catch (e) {
           console.error("Failed to sync layout", e);
+          showStatus("Failed to sync layout", "error");
         }
       }
 
@@ -397,132 +474,69 @@
         }
       }
 
-      function setupEvents() {
-        const canvas = document.getElementById('canvas');
-        // Remove old listeners to avoid duplicates (cloning canvas)
-        const newCanvas = canvas.cloneNode(true);
-        canvas.parentNode.replaceChild(newCanvas, canvas);
-        // We need to re-get the element and context after replacement
-        const freshCanvas = document.getElementById('canvas');
-
-        freshCanvas.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          handlePointerDown(e.clientX, e.clientY);
-        });
-        freshCanvas.addEventListener('mousemove', (e) => {
-          handlePointerMove(e.clientX, e.clientY);
-        });
-        freshCanvas.addEventListener('mouseup', () => handlePointerUp());
-        freshCanvas.addEventListener('mouseleave', () => handlePointerUp());
-
-        freshCanvas.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
-        });
-        freshCanvas.addEventListener('touchmove', (e) => {
-          e.preventDefault();
-          handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
-        });
-        freshCanvas.addEventListener('touchend', () => handlePointerUp());
-
-        // Color picker
-        const cp = document.getElementById('colorPicker');
-        const newCp = cp.cloneNode(true);
-        cp.parentNode.replaceChild(newCp, cp);
-        document.getElementById('colorPicker').addEventListener('change', (e) => {
-          currentColor = e.target.value;
-        });
-      }
-
-      function setTool(tool) {
-        currentTool = tool;
-        document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
-        if (tool === 'draw') document.querySelector('.draw-btn').classList.add('active');
-        if (tool === 'erase') document.querySelector('.erase-btn').classList.add('active');
-      }
-
-      function clearCanvas() {
-        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
-          Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
-        );
-        redrawCanvas();
-      }
-
-      function fillAll() {
-        const rgb = hexToRgb(currentColor);
-        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
-          Array(GRID_WIDTH).fill(null).map(() => [...rgb])
-        );
-        redrawCanvas();
-      }
-
       function redrawCanvas() {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const width = canvas.width;
-        const height = canvas.height;
 
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, width, height);
-
-        const ledSize = CELL_WIDTH - 2;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         for (let y = 0; y < GRID_HEIGHT; y++) {
           for (let x = 0; x < GRID_WIDTH; x++) {
             const [r, g, b] = pattern[y][x];
-            const centerX = x * CELL_WIDTH + CELL_WIDTH / 2;
-            const centerY = y * CELL_HEIGHT + CELL_HEIGHT / 2;
-            const radius = ledSize / 2;
-
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.fillStyle = '#222';
-            ctx.fill();
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            if (r > 0 || g > 0 || b > 0) {
-              ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-              ctx.fill();
-              ctx.shadowBlur = 5;
-              ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
-              ctx.fill();
-              ctx.shadowBlur = 0;
-            }
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(x * CELL_WIDTH, y * CELL_HEIGHT, CELL_WIDTH - 1, CELL_HEIGHT - 1);
           }
         }
 
-        ctx.strokeStyle = '#222';
-        ctx.lineWidth = 1;
-
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
         for (let x = 0; x <= GRID_WIDTH; x++) {
-          ctx.beginPath();
           ctx.moveTo(x * CELL_WIDTH, 0);
-          ctx.lineTo(x * CELL_WIDTH, height);
-          if (GRID_WIDTH === 128 && x % 32 === 0 && x > 0 && x < 128) {
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#555';
-          } else {
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = '#222';
-          }
-          ctx.stroke();
+          ctx.lineTo(x * CELL_WIDTH, canvas.height);
         }
-
         for (let y = 0; y <= GRID_HEIGHT; y++) {
-          ctx.beginPath();
           ctx.moveTo(0, y * CELL_HEIGHT);
-          ctx.lineTo(width, y * CELL_HEIGHT);
-          if (GRID_HEIGHT === 32 && y % 8 === 0 && y > 0 && y < 32) {
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#555';
-          } else {
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = '#222';
-          }
-          ctx.stroke();
+          ctx.lineTo(canvas.width, y * CELL_HEIGHT);
         }
+        ctx.stroke();
+      }
+
+      function setupEvents() {
+        const canvas = document.getElementById('canvas');
+
+        canvas.onmousedown = e => handlePointerDown(e.clientX, e.clientY);
+        canvas.onmousemove = e => handlePointerMove(e.clientX, e.clientY);
+        window.onmouseup = handlePointerUp;
+        canvas.onmouseleave = handlePointerUp;
+
+        canvas.ontouchstart = e => {
+          e.preventDefault();
+          handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        canvas.ontouchmove = e => {
+          e.preventDefault();
+          handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        window.ontouchend = handlePointerUp;
+
+        const cp = document.getElementById('colorPicker');
+        cp.onchange = (e) => {
+          currentColor = e.target.value;
+        };
+      }
+
+      function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        const btn = document.getElementById(tool + 'Btn');
+        if (btn) btn.classList.add('active');
+      }
+
+      function setColor(color) {
+        currentColor = color;
+        document.getElementById('colorPicker').value = color;
       }
 
       function hexToRgb(hex) {
@@ -534,216 +548,106 @@
         ] : [255, 0, 0];
       }
 
+      function clearCanvas() {
+        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+          Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+        );
+        redrawCanvas();
+      }
+
+      async function uploadPattern() {
+        let hexString = "";
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+          for (let x = 0; x < GRID_WIDTH; x++) {
+            const [r, g, b] = pattern[y][x];
+            // Convert to hex RRGGBB
+            const hex = ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            hexString += hex;
+          }
+        }
+
+        const payload = {
+          hex: hexString,
+          scrollSpeed: parseInt(document.getElementById('scrollSpeed').value) || 0
+        };
+
+        showStatus('Uploading...', 'info');
+        try {
+          const response = await fetch(getApiUrl('/api/uploadPattern'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (response.ok) showStatus('Uploaded successfully!', 'success');
+          else showStatus('Upload failed', 'error');
+        } catch (e) {
+          console.error(e);
+          showStatus('Connection error', 'error');
+        }
+      }
+
+      function showStatus(msg, type) {
+        const el = document.getElementById('status');
+        el.textContent = msg;
+        el.className = 'status ' + type;
+        el.style.display = 'block';
+        setTimeout(() => {
+          el.style.display = 'none';
+        }, 3000);
+      }
+
       function openTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(tabName).classList.add('active');
-      }
 
-      // Tab click handlers
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-          // Already handled by onclick in HTML calling openTab? 
-          // But we need to update active class on buttons too.
-          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
+        const btns = document.querySelectorAll('.tab-btn');
+        btns.forEach(b => {
+          if (b.textContent.toLowerCase().includes(tabName.replace('Tab', '').toLowerCase())) {
+            b.classList.add('active');
+          }
         });
-      });
-
-      function showStatus(message, type = 'info') {
-        const statusDiv = document.getElementById('status');
-        statusDiv.textContent = message;
-        statusDiv.className = 'status ' + type;
-        statusDiv.style.display = 'block';
-        setTimeout(() => statusDiv.style.display = 'none', 5000);
       }
 
-      async function setPattern(mode) {
-        showStatus(`Setting pattern ${mode}...`, 'info');
-        try {
-          const response = await fetch(`/api/set?m=${mode}`);
-          if (response.ok) {
-            showStatus(`✅ Pattern ${mode} set!`, 'success');
-          } else {
-            showStatus('❌ Failed to set pattern', 'error');
-          }
-        } catch (error) {
-          showStatus('❌ Error: ' + error.message, 'error');
-        }
+      function setMode(m) {
+        fetch(getApiUrl('/api/set?m=' + m)).catch(e => showStatus('Connection error', 'error'));
       }
 
-      async function uploadToESP() {
-        const scrollSpeed = parseInt(document.getElementById('scrollSpeed').value);
-        showStatus('Uploading...', 'info');
-
-        try {
-          const numLeds = GRID_WIDTH * GRID_HEIGHT;
-          const sparseData = [];
-
-          for (let x = 0; x < GRID_WIDTH; x++) {
-            for (let y = 0; y < GRID_HEIGHT; y++) {
-              const [r, g, b] = pattern[y][x];
-              if (r === 0 && g === 0 && b === 0) continue;
-
-              let stripIndex;
-
-              if (GRID_WIDTH === 32 && GRID_HEIGHT === 32) {
-                // 32x32: 4 Panels Vertical Stack (Serpentine)
-                const panelRow = Math.floor(y / 8);
-                const localX = x;
-                const localY = y % 8;
-                const panelIndex = panelRow;
-                const panelOffset = panelIndex * 256;
-
-                let finalLocalX = localX;
-                let finalLocalY = localY;
-
-                if (panelRow % 2 === 1) {
-                  finalLocalX = 31 - localX;
-                  finalLocalY = 7 - localY;
-                }
-
-                let localIndex;
-                if (finalLocalX % 2 === 0) {
-                  localIndex = finalLocalX * 8 + finalLocalY;
-                } else {
-                  localIndex = finalLocalX * 8 + (7 - finalLocalY);
-                }
-                stripIndex = panelOffset + localIndex;
-
-              } else {
-                // 128x8: 4 Panels Horizontal (Linear)
-                const panelCol = Math.floor(x / 32);
-                const localX = x % 32;
-                const localY = y;
-                const panelIndex = panelCol;
-                const panelOffset = panelIndex * 256;
-
-                let localIndex;
-                if (localX % 2 === 0) {
-                  localIndex = localX * 8 + localY;
-                } else {
-                  localIndex = localX * 8 + (7 - localY);
-                }
-                stripIndex = panelOffset + localIndex;
-              }
-
-              if (stripIndex < numLeds) {
-                sparseData.push([stripIndex, r, g, b]);
-              }
-            }
-          }
-
-          const estimatedRawSize = numLeds * 3;
-          const estimatedSparseSize = sparseData.length * 18;
-
-          if (estimatedSparseSize < estimatedRawSize) {
-            console.log(`Using Sparse format (${estimatedSparseSize} bytes vs ${estimatedRawSize} bytes)`);
-            const payload = JSON.stringify({
-              sparse: sparseData,
-              scrollSpeed: scrollSpeed
-            });
-
-            const response = await fetch(`/api/uploadPattern`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: payload
-            });
-
-            if (response.ok) {
-              showStatus(`✅ Uploaded!`, 'success');
-            } else {
-              showStatus('❌ Upload failed: ' + response.statusText, 'error');
-            }
-
-          } else {
-            console.log(`Using Raw format (${estimatedRawSize} bytes vs ${estimatedSparseSize} bytes)`);
-
-            const rawData = new Uint8Array(numLeds * 3);
-
-            for (let x = 0; x < GRID_WIDTH; x++) {
-              for (let y = 0; y < GRID_HEIGHT; y++) {
-                const [r, g, b] = pattern[y][x];
-
-                let stripIndex;
-                if (GRID_WIDTH === 32 && GRID_HEIGHT === 32) {
-                  const panelRow = Math.floor(y / 8);
-                  const localX = x;
-                  const localY = y % 8;
-                  const panelIndex = panelRow;
-                  const panelOffset = panelIndex * 256;
-                  let finalLocalX = localX;
-                  let finalLocalY = localY;
-                  if (panelRow % 2 === 1) {
-                    finalLocalX = 31 - localX;
-                    finalLocalY = 7 - localY;
-                  }
-                  let localIndex;
-                  if (finalLocalX % 2 === 0) {
-                    localIndex = finalLocalX * 8 + finalLocalY;
-                  } else {
-                    localIndex = finalLocalX * 8 + (7 - finalLocalY);
-                  }
-                  stripIndex = panelOffset + localIndex;
-                } else {
-                  const panelCol = Math.floor(x / 32);
-                  const localX = x % 32;
-                  const localY = y;
-                  const panelIndex = panelCol;
-                  const panelOffset = panelIndex * 256;
-                  let localIndex;
-                  if (localX % 2 === 0) {
-                    localIndex = localX * 8 + localY;
-                  } else {
-                    localIndex = localX * 8 + (7 - localY);
-                  }
-                  stripIndex = panelOffset + localIndex;
-                }
-
-                if (stripIndex < numLeds) {
-                  rawData[stripIndex * 3] = r;
-                  rawData[stripIndex * 3 + 1] = g;
-                  rawData[stripIndex * 3 + 2] = b;
-                }
-              }
-            }
-
-            const response = await fetch(`/api/uploadRaw?speed=${scrollSpeed}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/octet-stream' },
-              body: rawData
-            });
-
-            if (response.ok) {
-              showStatus(`✅ Uploaded!`, 'success');
-            } else {
-              showStatus('❌ Upload failed: ' + response.statusText, 'error');
-            }
-          }
-        } catch (error) {
-          showStatus('❌ Error: ' + error.message, 'error');
-        }
+      function setSpeed(val) {
+        // Not implemented
       }
 
-      async function sendText() {
+      function sendText() {
         const text = document.getElementById('scrollText').value;
-        const speed = document.getElementById('scrollSpeed').value;
+        fetch(getApiUrl('/api/setText?text=' + encodeURIComponent(text)))
+          .then(() => showStatus('Text sent', 'success'))
+          .catch(e => showStatus('Connection error', 'error'));
+      }
 
-        showStatus(`Sending text: ${text}...`, 'info');
+      async function loadPatterns() {
         try {
-          const response = await fetch(`/api/setText?text=${encodeURIComponent(text)}&speed=${speed}`);
-          if (response.ok) {
-            showStatus('✅ Text sent!', 'success');
-          } else {
-            showStatus('❌ Failed to send text', 'error');
-          }
-        } catch (error) {
-          showStatus('❌ Error: ' + error.message, 'error');
+          const res = await fetch(getApiUrl('/api/patterns'));
+          if (!res.ok) throw new Error('Failed to load');
+          const patterns = await res.json();
+          const container = document.getElementById('patternList');
+          container.innerHTML = '';
+          patterns.forEach((p, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.style.margin = '5px';
+            btn.style.width = 'auto';
+            btn.textContent = p.name;
+            btn.onclick = () => setMode(idx);
+            container.appendChild(btn);
+          });
+        } catch (e) {
+          console.log('Could not load patterns (API might not be ready)');
         }
       }
 
       // Start
       init();
+      loadPatterns();
     </script>
 </body>
 

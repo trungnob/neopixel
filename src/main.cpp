@@ -72,7 +72,7 @@ float ASPECT_RATIO = 1.0;
 // XY function is now in patterns.h (handles both layouts)
 
 // State variables
-int currentPattern = 125; // Default to Clock
+int currentPattern = 200; // Default to IP + Clock
 uint8_t hue = 0;
 String scrollText = "HELLO WORLD"; // Global variables
 int scrollOffset = 0;
@@ -2087,8 +2087,11 @@ void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
           int srcX = (x + customScrollOffset) % GRID_WIDTH;
 
           // Get LED indices
+          // Get LED indices
           int destIdx = XY(x, y);
-          int srcIdx = XY(srcX, y);
+          // customPattern is stored in logical Row-Major order (from web app)
+          // So we must access it linearly: y * WIDTH + x
+          int srcIdx = y * GRID_WIDTH + srcX;
 
           if (destIdx >= 0 && destIdx < MAX_LEDS && srcIdx >= 0 &&
               srcIdx < MAX_LEDS) {
@@ -2107,6 +2110,9 @@ void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
     break;
   case 125: // Digital Clock
     pattern_clock(leds, activeLeds, hue, scrollOffset, scrollSpeed);
+    break;
+  case 200: // IP + Clock
+    pattern_ip_clock(leds, activeLeds, hue, scrollOffset, scrollSpeed);
     break;
   }
 
