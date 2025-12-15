@@ -7,6 +7,7 @@ import socket
 import sys
 import subprocess
 import requests
+import gc
 from scipy.fft import rfft
 
 # Configuration
@@ -138,6 +139,9 @@ def main(brightness=0.3):
     
     print("Starting visualization...")
     
+    # Disable garbage collection to prevent pauses
+    gc.disable()
+    
     try:
         while True:
             raw = parec.stdout.read(bytes_per_chunk)
@@ -228,6 +232,7 @@ def main(brightness=0.3):
         # Send EXIT to exit streaming mode
         print("Exiting streaming mode...")
         sock.sendto(b'EXIT', (ESP_IP, UDP_PORT))
+        gc.enable()  # Re-enable garbage collection
         parec.terminate()
         sock.close()
 
