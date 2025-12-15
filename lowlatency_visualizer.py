@@ -98,10 +98,10 @@ def main(brightness=0.3):
     # Setup UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    # FFT setup - better frequency distribution
+    # FFT setup - optimized for 24Hz FFT resolution
     num_bins = GRID_WIDTH
-    min_freq = 60     # Skip sub-bass (inaudible)
-    max_freq = 12000  # Upper audible range
+    min_freq = 40      # Above first FFT bin (24Hz) for better separation
+    max_freq = 16000   # Most music content
     freq_bins = np.logspace(np.log10(min_freq), np.log10(max_freq), num_bins + 1)
     freqs = np.fft.rfftfreq(CHUNK, 1 / RATE)
     
@@ -157,13 +157,19 @@ def main(brightness=0.3):
                 window = np.hanning(len(audio))
                 fft_data = np.abs(rfft(audio * window))
                 
-                # Map to frequency bins with weighting
+                # Map to frequency bins - use nearest bin when range is too small
                 bin_heights = np.zeros(num_bins)
                 for b in range(num_bins):
-                    mask = (freqs >= freq_bins[b]) & (freqs < freq_bins[b + 1])
+                    low_f = freq_bins[b]
+                    high_f = freq_bins[b + 1]
+                    mask = (freqs >= low_f) & (freqs < high_f)
                     if np.any(mask):
-                        # Use mean instead of max for smoother response
                         bin_heights[b] = np.sqrt(np.mean(fft_data[mask] ** 2))
+                    else:
+                        # No FFT bins in range - use nearest frequency
+                        center_f = (low_f + high_f) / 2
+                        nearest_idx = np.argmin(np.abs(freqs - center_f))
+                        bin_heights[b] = fft_data[nearest_idx]
                 
                 # Per-band auto-normalization (adapts to music dynamics)
                 band_maxes = np.maximum(band_maxes * 0.995, bin_heights)
