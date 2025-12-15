@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
 Low-latency audio visualizer using parec for real-time system audio capture
+
+Keyboard shortcuts:
+  1 = bars mode
+  2 = mirror mode  
+  3 = wave mode
+  q = quit
 """
 import numpy as np
 import socket
@@ -8,6 +14,9 @@ import sys
 import subprocess
 import requests
 import gc
+import select
+import termios
+import tty
 from scipy.fft import rfft
 
 # Configuration
@@ -22,7 +31,7 @@ PANELS_WIDE = 1
 RATE = 48000  # Match PipeWire's 48kHz
 CHUNK = 2000  # 48000/2000 = 24 FPS
 CHANNELS = 2
-AMPLITUDE_SCALE = 0.8  # Scale down amplitude
+AMPLITUDE_SCALE = 0.8  # Moderate amplitude
 
 def XY(x, y):
     if x < 0 or x >= GRID_WIDTH or y < 0 or y >= GRID_HEIGHT:
@@ -62,7 +71,7 @@ def hsv_to_rgb(h, s, v):
     else: r, g, b = v, p, q
     return (int(r * 255), int(g * 255), int(b * 255))
 
-def main(brightness=0.3):
+def main(brightness=0.3, mode="bars"):
     print("=" * 60)
     print("Low-Latency Audio Visualizer (using parec)")
     print("=" * 60)
@@ -138,12 +147,35 @@ def main(brightness=0.3):
         print(f"Warning: Could not enter streaming mode: {e}")
     
     print("Starting visualization...")
+    print("Press 1=bars, 2=mirror, 3=wave, q=quit")
     
     # Disable garbage collection to prevent pauses
     gc.disable()
     
+    # Setup non-blocking keyboard input
+    old_settings = termios.tcgetattr(sys.stdin)
+    modes = ["bars", "mirror", "wave"]
+    current_mode = mode
+    
     try:
+        tty.setcbreak(sys.stdin.fileno())
+        
         while True:
+            # Check for keyboard input
+            if select.select([sys.stdin], [], [], 0)[0]:
+                key = sys.stdin.read(1)
+                if key == 'q':
+                    break
+                elif key == '1':
+                    current_mode = "bars"
+                    print(f"\rMode: bars    ", end='', flush=True)
+                elif key == '2':
+                    current_mode = "mirror"
+                    print(f"\rMode: mirror  ", end='', flush=True)
+                elif key == '3':
+                    current_mode = "wave"
+                    print(f"\rMode: wave    ", end='', flush=True)
+            
             raw = parec.stdout.read(bytes_per_chunk)
             if not raw:
                 break
@@ -197,34 +229,91 @@ def main(brightness=0.3):
                 # Create LED frame
                 pixels = [0] * (MAX_LEDS * 3)
                 
-                for x in range(GRID_WIDTH):
-                    height = int(bin_heights[x] * GRID_HEIGHT)
-                    peak_y = int(peaks[x])
-                    
-                    for y in range(GRID_HEIGHT):
-                        led_idx = XY(x, y)
-                        bar_y = GRID_HEIGHT - 1 - y
+                if current_mode == "bars":
+                    # Normal bars from bottom
+                    for x in range(GRID_WIDTH):
+                        height = int(bin_heights[x] * GRID_HEIGHT)
+                        peak_y = int(peaks[x])
                         
-                        if led_idx >= 0 and led_idx < MAX_LEDS:
-                            if bar_y < height:
-                                # Normal bar
-                                hue = (x / GRID_WIDTH) * 300
-                                intensity = 0.5 + 0.5 * (bar_y / GRID_HEIGHT)
-                                r, g, b = hsv_to_rgb(hue, 1.0, intensity)
-                                r = int(r * brightness)
-                                g = int(g * brightness)
-                                b = int(b * brightness)
-                            elif bar_y == peak_y and peak_y > 0:
-                                # Peak dot - bright white
-                                r = int(255 * brightness)
-                                g = int(255 * brightness)
-                                b = int(255 * brightness)
-                            else:
-                                r, g, b = 0, 0, 0
+                        for y in range(GRID_HEIGHT):
+                            led_idx = XY(x, y)
+                            bar_y = GRID_HEIGHT - 1 - y
                             
-                            pixels[led_idx * 3] = r
-                            pixels[led_idx * 3 + 1] = g
-                            pixels[led_idx * 3 + 2] = b
+                            if led_idx >= 0 and led_idx < MAX_LEDS:
+                                if bar_y < height:
+                                    hue = (x / GRID_WIDTH) * 300
+                                    intensity = 0.5 + 0.5 * (bar_y / GRID_HEIGHT)
+                                    r, g, b = hsv_to_rgb(hue, 1.0, intensity)
+                                    r = int(r * brightness)
+                                    g = int(g * brightness)
+                                    b = int(b * brightness)
+                                elif bar_y == peak_y and peak_y > 0:
+                                    r = int(255 * brightness)
+                                    g = int(255 * brightness)
+                                    b = int(255 * brightness)
+                                else:
+                                    r, g, b = 0, 0, 0
+                                
+                                pixels[led_idx * 3] = r
+                                pixels[led_idx * 3 + 1] = g
+                                pixels[led_idx * 3 + 2] = b
+                
+                elif current_mode == "mirror":
+                    # Mirrored from center - bars grow up and down
+                    center_y = GRID_HEIGHT // 2
+                    for x in range(GRID_WIDTH):
+                        half_height = int(bin_heights[x] * center_y)
+                        
+                        for y in range(GRID_HEIGHT):
+                            led_idx = XY(x, y)
+                            dist_from_center = abs(y - center_y)
+                            
+                            if led_idx >= 0 and led_idx < MAX_LEDS:
+                                if dist_from_center < half_height:
+                                    hue = (x / GRID_WIDTH) * 300
+                                    intensity = 0.3 + 0.7 * (1 - dist_from_center / center_y)
+                                    r, g, b = hsv_to_rgb(hue, 1.0, intensity)
+                                    r = int(r * brightness)
+                                    g = int(g * brightness)
+                                    b = int(b * brightness)
+                                else:
+                                    r, g, b = 0, 0, 0
+                                
+                                pixels[led_idx * 3] = r
+                                pixels[led_idx * 3 + 1] = g
+                                pixels[led_idx * 3 + 2] = b
+                
+                elif current_mode == "wave":
+                    # Smooth waveform centered at middle - amplitude controls deviation
+                    center_y = GRID_HEIGHT // 2
+                    
+                    # Smooth the heights for wave mode
+                    smooth_heights = np.convolve(bin_heights, np.ones(3)/3, mode='same')
+                    
+                    for x in range(GRID_WIDTH):
+                        # Amplitude determines how far from center (both up and down)
+                        amplitude = smooth_heights[x] * (GRID_HEIGHT // 2)
+                        wave_y = int(center_y + amplitude * np.sin(x * 0.3))  # Sine pattern
+                        wave_y = max(0, min(GRID_HEIGHT - 1, wave_y))
+                        
+                        # Draw gradient line
+                        for y in range(GRID_HEIGHT):
+                            led_idx = XY(x, y)
+                            if led_idx >= 0 and led_idx < MAX_LEDS:
+                                dist = abs(y - wave_y)
+                                if dist <= 2:
+                                    hue = (x / GRID_WIDTH) * 300
+                                    intensity = 1.0 - dist * 0.35
+                                    r, g, b = hsv_to_rgb(hue, 1.0, intensity)
+                                    r = int(r * brightness)
+                                    g = int(g * brightness)
+                                    b = int(b * brightness)
+                                else:
+                                    r, g, b = 0, 0, 0
+                                
+                                pixels[led_idx * 3] = r
+                                pixels[led_idx * 3 + 1] = g
+                                pixels[led_idx * 3 + 2] = b
                 
                 sock.sendto(bytes(pixels), (ESP_IP, UDP_PORT))
                 frame_count += 1
@@ -235,6 +324,8 @@ def main(brightness=0.3):
     except KeyboardInterrupt:
         print(f"\n\nStopped. Total frames: {frame_count}")
     finally:
+        # Restore terminal settings
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
         # Send EXIT to exit streaming mode
         print("Exiting streaming mode...")
         sock.sendto(b'EXIT', (ESP_IP, UDP_PORT))
@@ -246,5 +337,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--brightness", type=float, default=0.3)
+    parser.add_argument("--mode", choices=["bars", "mirror", "wave"], default="bars",
+                        help="Visualization mode: bars (default), mirror, or wave")
     args = parser.parse_args()
-    main(args.brightness)
+    main(args.brightness, args.mode)
