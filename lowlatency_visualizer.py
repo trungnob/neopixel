@@ -107,6 +107,8 @@ def main(brightness=0.3):
     # Per-band normalization history
     band_maxes = np.ones(num_bins)
     prev_heights = np.zeros(num_bins)
+    peaks = np.zeros(num_bins)  # Peak hold values
+    peak_fall_speed = 0.5  # How fast peaks fall per frame
     frame_count = 0
     
     # Start parec with minimal latency
@@ -174,24 +176,41 @@ def main(brightness=0.3):
                 bin_heights = 0.2 * prev_heights + 0.8 * bin_heights
                 prev_heights = bin_heights.copy()
                 
+                # Update peaks (falling dots)
+                for x in range(GRID_WIDTH):
+                    height = int(bin_heights[x] * GRID_HEIGHT)
+                    if height > peaks[x]:
+                        peaks[x] = height
+                    else:
+                        peaks[x] = max(0, peaks[x] - peak_fall_speed)
+                
                 # Create LED frame
                 pixels = [0] * (MAX_LEDS * 3)
                 
                 for x in range(GRID_WIDTH):
                     height = int(bin_heights[x] * GRID_HEIGHT)
+                    peak_y = int(peaks[x])
                     
                     for y in range(GRID_HEIGHT):
                         led_idx = XY(x, y)
                         bar_y = GRID_HEIGHT - 1 - y
                         
-                        if led_idx >= 0 and led_idx < MAX_LEDS and bar_y < height:
-                            hue = (x / GRID_WIDTH) * 300
-                            intensity = 0.5 + 0.5 * (bar_y / GRID_HEIGHT)
-                            r, g, b = hsv_to_rgb(hue, 1.0, intensity)
-                            
-                            r = int(r * brightness)
-                            g = int(g * brightness)
-                            b = int(b * brightness)
+                        if led_idx >= 0 and led_idx < MAX_LEDS:
+                            if bar_y < height:
+                                # Normal bar
+                                hue = (x / GRID_WIDTH) * 300
+                                intensity = 0.5 + 0.5 * (bar_y / GRID_HEIGHT)
+                                r, g, b = hsv_to_rgb(hue, 1.0, intensity)
+                                r = int(r * brightness)
+                                g = int(g * brightness)
+                                b = int(b * brightness)
+                            elif bar_y == peak_y and peak_y > 0:
+                                # Peak dot - bright white
+                                r = int(255 * brightness)
+                                g = int(255 * brightness)
+                                b = int(255 * brightness)
+                            else:
+                                r, g, b = 0, 0, 0
                             
                             pixels[led_idx * 3] = r
                             pixels[led_idx * 3 + 1] = g
