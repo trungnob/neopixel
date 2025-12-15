@@ -38,6 +38,11 @@ upload-ota:
 		echo "Set HOST=ip (or OTA_HOST env) when running make upload-ota" >&2; \
 		exit 1; \
 	fi
+	@echo "Exiting streaming mode (waiting 6 seconds for timeout)..."
+	@sleep 6
+	@echo "Checking ESP8266 connection..."
+	@curl -s --max-time 5 "http://$(if $(HOST),$(HOST),$(OTA_HOST))/udpstats" || echo "Warning: Could not reach ESP8266"
+	@echo ""
 	$(DEVICE_ENV) OTA_HOST="$(if $(HOST),$(HOST),$(OTA_HOST))" scripts/device.sh upload-ota "$(if $(HOST),$(HOST),$(OTA_HOST))"
 
 monitor:

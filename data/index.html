@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>LED Pattern Designer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 24px;
+      color: #00ffff;
+    }
+
+    .info {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #888;
+    }
+
+    .version {
+      color: #0f0;
+      font-size: 12px;
+    }
+
+    .canvas-container {
+      background: #000;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 15px;
+      position: relative;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      /* Center the square grid */
+      overflow-x: auto;
+    }
+
+    #canvas {
+      display: block;
+      height: auto;
+      image-rendering: pixelated;
+      cursor: crosshair;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #444;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      background: #2a2a2a;
+      color: #fff;
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    button.active {
+      border-color: #00ffff;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+
+    .draw-btn {
+      background: #4CAF50;
+    }
+
+    .erase-btn {
+      background: #f44336;
+    }
+
+    .fill-btn {
+      background: #2196F3;
+    }
+
+    .clear-btn {
+      background: #FF9800;
+    }
+
+    .upload-btn {
+      background: #9C27B0;
+      font-size: 18px;
+      grid-column: 1 / -1;
+    }
+
+    .color-picker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 8px;
+      padding: 8px;
+      position: relative;
+    }
+
+    #colorPicker {
+      width: 100%;
+      height: 50px;
+      border: 2px solid #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .settings {
+      background: #2a2a2a;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .setting-row:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      padding: 8px;
+      font-size: 14px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #1a1a1a;
+      color: #fff;
+      width: 200px;
+    }
+
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-weight: 600;
+      display: none;
+    }
+
+    .status.success {
+      background: #4CAF50;
+    }
+
+    .status.error {
+      background: #f44336;
+    }
+
+    .status.info {
+      background: #2196F3;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 20px;
+      }
+
+      .controls {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      input[type="text"],
+      input[type="number"] {
+        width: 150px;
+      }
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #444;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      background: #2a2a2a;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #888;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 8px 8px 0 0;
+      margin-right: 5px;
+    }
+
+    .tab-btn.active {
+      background: #333;
+      color: #fff;
+      border-bottom-color: #00ffff;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🎨 LED Pattern Designer</h1>
+    <div class="info">32 × 32 Grid | 4 Vertical Panels | Column Zigzag</div>
+    <div class="version">v3.2 - 32x32 Matrix</div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="openTab('tab-draw')">✏️ Draw Pattern</button>
+      <button class="tab-btn" onclick="openTab('tab-text')">📝 Scrolling Text</button>
+    </div>
+
+    <div id="tab-draw" class="tab-content active">
+      <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+
+      <div class="controls">
+        <button class="draw-btn active" onclick="setTool('draw')">✏️ Draw</button>
+        <button class="erase-btn" onclick="setTool('erase')">🧹 Erase</button>
+        <button class="fill-btn" onclick="fillAll()">🎨 Fill</button>
+        <button class="clear-btn" onclick="clearCanvas()">🗑️ Clear</button>
+        <div class="color-picker">
+          <input type="color" id="colorPicker" value="#ff0000">
+        </div>
+      </div>
+
+      <div class="settings">
+        <div class="setting-row">
+          <label>Layout:</label>
+          <select id="layoutSelect" onchange="changeLayout()">
+            <option value="32x32">32 x 32 (4 Panels Vertical)</option>
+            <option value="128x8">128 x 8 (4 Panels Horizontal)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Scroll Speed (0=Static):</label>
+          <input type="number" id="scrollSpeed" value="0" min="0" max="200">
+        </div>
+      </div>
+
+      <button class="upload-btn" onclick="uploadToESP()">🚀 Upload to ESP8266</button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="tab-text" class="tab-content">
+      <div class="settings">
+        <div class="setting-row">
+          <label>Text to Scroll:</label>
+          <input type="text" id="scrollText" value="HELLO WORLD" placeholder="Enter text..." style="width: 200px;">
+        </div>
+        <div style="margin-top: 10px; text-align: center;">
+          <button class="upload-btn" onclick="sendText()">📨 Send Text</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal"
+      style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;">
+      <div
+        style="background:#333; margin:100px auto; padding:20px; width:90%; max-width:400px; border-radius:10px; text-align:center;">
+        <h2>Settings</h2>
+        <div class="control-group">
+          <label>ESP8266 IP Address:</label>
+          <input type="text" id="espIpInput" placeholder="192.168.1.130" style="width:100%; margin-top:10px;">
+        </div>
+        <button onclick="saveSettings()" class="btn" style="background:#44ff44; color:black;">Save</button>
+        <button onclick="closeSettings()" class="btn" style="background:#555; margin-top:10px;">Cancel</button>
+      </div>
+    </div>
+
+    <script>
+      let GRID_WIDTH = 32;
+      let GRID_HEIGHT = 32;
+      const CELL_WIDTH = 20;
+      const CELL_HEIGHT = 20;
+
+      // API Configuration
+      let espIp = localStorage.getItem('espIp') || window.location.hostname;
+      // If running on localhost/file, default to a common IP or ask user
+      if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if (!localStorage.getItem('espIp')) {
+          espIp = "192.168.1.130"; // Default fallback
+        }
+      }
+
+      function getApiUrl(path) {
+        let targetPath = path;
+        if (path.startsWith('/api/setText')) targetPath = path.replace('/api/setText', '/setText');
+        else if (path.startsWith('/api/set')) targetPath = path.replace('/api/set', '/set');
+        else if (path.startsWith('/api/uploadPattern')) targetPath = path.replace('/api/uploadPattern', '/uploadPattern');
+        else if (path.startsWith('/api/uploadRaw')) targetPath = path.replace('/api/uploadRaw', '/uploadRaw');
+
+        return `http://${espIp}${targetPath}`;
+      }
+
+      function openSettings() {
+        document.getElementById('espIpInput').value = espIp;
+        document.getElementById('settingsModal').style.display = 'block';
+      }
+
+      function closeSettings() {
+        document.getElementById('settingsModal').style.display = 'none';
+      }
+
+      function saveSettings() {
+        const newIp = document.getElementById('espIpInput').value.trim();
+        if (newIp) {
+          espIp = newIp;
+          localStorage.setItem('espIp', espIp);
+          showStatus('Settings saved', 'success');
+          closeSettings();
+          loadPatterns();
+        }
+      }
+
+      let currentTool = 'draw';
+      let currentColor = '#ff0000';
+      let isDrawing = false;
+      let pattern = [];
+
+      // Initialize
+      function init() {
+        const canvas = document.getElementById('canvas');
+        canvas.width = GRID_WIDTH * CELL_WIDTH;
+        canvas.height = GRID_HEIGHT * CELL_HEIGHT;
+
+        if (pattern.length !== GRID_HEIGHT || pattern[0].length !== GRID_WIDTH) {
+          pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+            Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+          );
+        }
+
+        setupEvents();
+        redrawCanvas();
+
+        // Add Settings Button if not present
+        if (!document.getElementById('settingsBtn')) {
+          const header = document.querySelector('h1');
+          const btn = document.createElement('button');
+          btn.id = 'settingsBtn';
+          btn.className = 'btn';
+          btn.innerHTML = '⚙️';
+          btn.onclick = openSettings;
+          btn.style.marginLeft = '10px';
+          btn.style.background = '#555';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '5px';
+          btn.style.padding = '8px 12px';
+          btn.style.cursor = 'pointer';
+          btn.style.color = '#fff';
+          if (header) header.parentNode.insertBefore(btn, header.nextSibling);
+        }
+      }
+
+      async function changeLayout() {
+        const layout = document.getElementById('layoutSelect').value;
+        let rows, cols;
+
+        if (layout === '128x8') {
+          GRID_WIDTH = 128;
+          GRID_HEIGHT = 8;
+          document.querySelector('.info').textContent = "128 × 8 Grid | 4 Horizontal Panels";
+          rows = 1;
+          cols = 4;
+        } else {
+          GRID_WIDTH = 32;
+          GRID_HEIGHT = 32;
+          document.querySelector('.info').textContent = "32 × 32 Grid | 4 Vertical Panels";
+          rows = 4;
+          cols = 1;
+        }
+
+        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+          Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+        );
+
+        init();
+
+        try {
+          await fetch(getApiUrl(`/api/setPanels?rows=${rows}&cols=${cols}`));
+          showStatus(`Layout changed to ${layout}`, 'success');
+        } catch (e) {
+          console.error("Failed to sync layout", e);
+          showStatus("Failed to sync layout", "error");
+        }
+      }
+
+      function getGridCoordinates(clientX, clientY) {
+        const canvas = document.getElementById('canvas');
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const canvasX = (clientX - rect.left) * scaleX;
+        const canvasY = (clientY - rect.top) * scaleY;
+        const x = Math.floor(canvasX / CELL_WIDTH);
+        const y = Math.floor(canvasY / CELL_HEIGHT);
+        return { x, y };
+      }
+
+      function handlePointerDown(clientX, clientY) {
+        isDrawing = true;
+        drawPixel(clientX, clientY);
+      }
+
+      function handlePointerMove(clientX, clientY) {
+        if (!isDrawing) return;
+        drawPixel(clientX, clientY);
+      }
+
+      function handlePointerUp() {
+        isDrawing = false;
+      }
+
+      function drawPixel(clientX, clientY) {
+        const { x, y } = getGridCoordinates(clientX, clientY);
+        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+          if (currentTool === 'draw') {
+            pattern[y][x] = hexToRgb(currentColor);
+          } else if (currentTool === 'erase') {
+            pattern[y][x] = [0, 0, 0];
+          }
+          redrawCanvas();
+        }
+      }
+
+      function redrawCanvas() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+          for (let x = 0; x < GRID_WIDTH; x++) {
+            const [r, g, b] = pattern[y][x];
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(x * CELL_WIDTH, y * CELL_HEIGHT, CELL_WIDTH - 1, CELL_HEIGHT - 1);
+          }
+        }
+
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        for (let x = 0; x <= GRID_WIDTH; x++) {
+          ctx.moveTo(x * CELL_WIDTH, 0);
+          ctx.lineTo(x * CELL_WIDTH, canvas.height);
+        }
+        for (let y = 0; y <= GRID_HEIGHT; y++) {
+          ctx.moveTo(0, y * CELL_HEIGHT);
+          ctx.lineTo(canvas.width, y * CELL_HEIGHT);
+        }
+        ctx.stroke();
+      }
+
+      function setupEvents() {
+        const canvas = document.getElementById('canvas');
+
+        canvas.onmousedown = e => handlePointerDown(e.clientX, e.clientY);
+        canvas.onmousemove = e => handlePointerMove(e.clientX, e.clientY);
+        window.onmouseup = handlePointerUp;
+        canvas.onmouseleave = handlePointerUp;
+
+        canvas.ontouchstart = e => {
+          e.preventDefault();
+          handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        canvas.ontouchmove = e => {
+          e.preventDefault();
+          handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        window.ontouchend = handlePointerUp;
+
+        const cp = document.getElementById('colorPicker');
+        cp.onchange = (e) => {
+          currentColor = e.target.value;
+        };
+      }
+
+      function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        const btn = document.getElementById(tool + 'Btn');
+        if (btn) btn.classList.add('active');
+      }
+
+      function setColor(color) {
+        currentColor = color;
+        document.getElementById('colorPicker').value = color;
+      }
+
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? [
+          parseInt(result[1], 16),
+          parseInt(result[2], 16),
+          parseInt(result[3], 16)
+        ] : [255, 0, 0];
+      }
+
+      function clearCanvas() {
+        pattern = Array(GRID_HEIGHT).fill(null).map(() =>
+          Array(GRID_WIDTH).fill(null).map(() => [0, 0, 0])
+        );
+        redrawCanvas();
+      }
+
+      async function uploadPattern() {
+        const flatPattern = [];
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+          for (let x = 0; x < GRID_WIDTH; x++) {
+            flatPattern.push(pattern[y][x]);
+          }
+        }
+
+        const payload = {
+          width: GRID_WIDTH,
+          height: GRID_HEIGHT,
+          data: flatPattern
+        };
+
+        showStatus('Uploading...', 'info');
+        try {
+          const response = await fetch(getApiUrl('/api/uploadPattern'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (response.ok) showStatus('Uploaded successfully!', 'success');
+          else showStatus('Upload failed', 'error');
+        } catch (e) {
+          console.error(e);
+          showStatus('Connection error', 'error');
+        }
+      }
+
+      function showStatus(msg, type) {
+        const el = document.getElementById('status');
+        el.textContent = msg;
+        el.className = 'status ' + type;
+        el.style.display = 'block';
+        setTimeout(() => {
+          el.style.display = 'none';
+        }, 3000);
+      }
+
+      function openTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+
+        const btns = document.querySelectorAll('.tab-btn');
+        btns.forEach(b => {
+          if (b.textContent.toLowerCase().includes(tabName.replace('Tab', '').toLowerCase())) {
+            b.classList.add('active');
+          }
+        });
+      }
+
+      function setMode(m) {
+        fetch(getApiUrl('/api/set?m=' + m)).catch(e => showStatus('Connection error', 'error'));
+      }
+
+      function setSpeed(val) {
+        // Not implemented
+      }
+
+      function sendText() {
+        const text = document.getElementById('scrollTextInput').value;
+        fetch(getApiUrl('/api/setText?text=' + encodeURIComponent(text)))
+          .then(() => showStatus('Text sent', 'success'))
+          .catch(e => showStatus('Connection error', 'error'));
+      }
+
+      async function loadPatterns() {
+        try {
+          const res = await fetch(getApiUrl('/api/patterns'));
+          if (!res.ok) throw new Error('Failed to load');
+          const patterns = await res.json();
+          const container = document.getElementById('patternList');
+          container.innerHTML = '';
+          patterns.forEach((p, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.style.margin = '5px';
+            btn.style.width = 'auto';
+            btn.textContent = p.name;
+            btn.onclick = () => setMode(idx);
+            container.appendChild(btn);
+          });
+        } catch (e) {
+          console.log('Could not load patterns (API might not be ready)');
+        }
+      }
+
+      // Start
+      init();
+      loadPatterns();
+    </script>
+</body>
+
+</html>

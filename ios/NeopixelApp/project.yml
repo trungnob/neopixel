@@ -1,0 +1,16 @@
+name: NeopixelApp
+options:
+  bundleIdPrefix: com.trungnob
+targets:
+  NeopixelApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: .
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.trungnob.NeopixelApp
+      INFOPLIST_FILE: Info.plist
+      DEVELOPMENT_TEAM: ""
+
+
