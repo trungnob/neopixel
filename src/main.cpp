@@ -84,6 +84,10 @@ unsigned long udpPacketsReceived = 0;
 unsigned long udpPacketsDisplayed = 0;
 unsigned long udpStatsLastPrint = 0;
 
+// State Machine Timers
+unsigned long lastActivityTime = 0; // Last user interaction or state change
+const unsigned long IDLE_TIMEOUT = 60000; // 60 seconds to auto-stream
+
 // Timing profiling (in microseconds)
 unsigned long timeParsePacket = 0;
 unsigned long timeReadPacket = 0;
@@ -372,6 +376,7 @@ void setupServerHandlers() { // Encapsulating the server.on calls in a function
 void handleSet() {
   if (server.hasArg("m")) {
     currentPattern = server.arg("m").toInt();
+    lastActivityTime = millis(); // User interaction resets timer
   }
   if (server.hasArg("c")) {
     int newCount = server.arg("c").toInt();
@@ -794,6 +799,17 @@ void setup() {
   server.on("/set", handleSet);
   server.on("/setLayout", handleSetLayout); // NEW: Layout switching endpoint
   server.on("/setText", handleSetText);
+  server.on("/info", []() {
+    String json = "{";
+    json += "\"currentPattern\":" + String(currentPattern) + ",";
+    json += "\"uptime\":" + String(millis() / 1000) + ",";
+    json += "\"heap\":" + String(ESP.getFreeHeap());
+    json += "}";
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "application/json", json);
+    // Reset activity timer on status check? No, checking status shouldn't delay
+    // idle
+  });
   server.on("/api/patterns", handleGetPatterns);
   server.on("/uploadPattern", HTTP_POST, handleUploadPattern);
   server.on("/uploadPattern", HTTP_OPTIONS,
@@ -885,6 +901,9 @@ void setup() {
   delay(300);
   leds[0] = CRGB::Black;
   FastLED.show();
+
+  // Initialize Activity Timer
+  lastActivityTime = millis();
 }
 
 void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
@@ -970,20 +989,29 @@ void renderPatternFrame(int currentPattern, CRGB *leds, int activeLeds,
 }
 
 void loop() {
+  // State Machine Logic
+  if (currentPattern == 200) {
+    if (millis() - lastActivityTime > IDLE_TIMEOUT) {
+      Serial.println("Idle timeout -> Switching to Streaming Mode");
+      currentPattern = 255;
+      lastUdpPacketTime = millis();
+    }
+  }
+
   // Streaming optimization: skip HTTP/OTA during active streaming
   bool inStreaming = (currentPattern == 255);
-  bool streamActive = (millis() - lastUdpPacketTime < 100);
-
-  // Check HTTP/OTA only when not actively streaming
-  if (!inStreaming || !streamActive) {
+  // Relaxed check: Check HTTP every 200ms even if streaming
+  static unsigned long lastHttpCheck = 0;
+  if (!inStreaming || (millis() - lastHttpCheck > 200)) {
     ArduinoOTA.handle();
     server.handleClient();
+    lastHttpCheck = millis();
   }
 
-  // Auto-exit streaming if no UDP for 5 seconds
-  if (inStreaming && millis() - lastUdpPacketTime > 5000) {
-    currentPattern = 0;
-  }
+  // Auto-exit streaming if no UDP for 5 seconds -> REMOVED per request
+  // if (inStreaming && millis() - lastUdpPacketTime > 5000) {
+  //   currentPattern = 0;
+  // }
 
   // UDP Streaming - only process if in streaming mode
   if (inStreaming) {
@@ -994,7 +1022,9 @@ void loop() {
         char buf[5] = {0};
         udp.read(buf, 4);
         if (memcmp(buf, "EXIT", 4) == 0) {
-          currentPattern = 0; // Exit streaming mode
+          Serial.println("UDP EXIT received -> Returning to Idle");
+          currentPattern = 200;        // Return to IP+Clock
+          lastActivityTime = millis(); // Reset idle timer
           break;
         }
         // Not EXIT, treat as small data (unlikely for LED data)
