@@ -112,5 +112,98 @@ void pattern_ip_clock(CRGB *leds, int activeLeds, uint8_t &hue,
     }
   }
 
+  // --- Panel 3: WiFi Signal Strength (Rows 16-23) ---
+  int rssi = WiFi.RSSI();
+  // Map RSSI to bars: -30 dBm = excellent (5 bars), -90 dBm = poor (1 bar)
+  // RSSI typically ranges from -30 (excellent) to -90 (poor)
+  int bars = 0;
+  if (rssi > -50)
+    bars = 5;
+  else if (rssi > -60)
+    bars = 4;
+  else if (rssi > -70)
+    bars = 3;
+  else if (rssi > -80)
+    bars = 2;
+  else
+    bars = 1;
+
+  // Draw WiFi icon/label "WiFi" and signal bars
+  // Position: centered on panel 3
+  int barWidth = 4;
+  int barSpacing = 2;
+  int totalBarsWidth = 5 * barWidth + 4 * barSpacing; // 5 bars
+  int barsStartX = (GRID_WIDTH - totalBarsWidth) / 2;
+  int panelY = 16; // Panel 3 starts at row 16
+
+  // Draw signal bars
+  for (int b = 0; b < 5; b++) {
+    int barHeight = (b + 1) * 1 + 2; // Heights: 3,4,5,6,7
+    int barX = barsStartX + b * (barWidth + barSpacing);
+
+    // Color based on bar position and if active
+    CRGB barColor;
+    if (b < bars) {
+      // Active bar - color based on signal strength
+      if (bars >= 4)
+        barColor = CRGB::Green;
+      else if (bars >= 2)
+        barColor = CRGB::Yellow;
+      else
+        barColor = CRGB::Red;
+    } else {
+      // Inactive bar - dim gray
+      barColor = CRGB(30, 30, 30);
+    }
+
+    // Draw bar from bottom of panel upward
+    for (int x = barX; x < barX + barWidth && x < GRID_WIDTH; x++) {
+      for (int h = 0; h < barHeight; h++) {
+        int y = panelY + 7 - h; // Start from bottom of panel (row 23) going up
+        if (y >= panelY && y < panelY + 8) {
+          int ledIdx = XY(x, y);
+          if (ledIdx >= 0 && ledIdx < activeLeds) {
+            leds[ledIdx] = barColor;
+          }
+        }
+      }
+    }
+  }
+
+  // --- Panel 4: RSSI value in dBm (Rows 24-31) ---
+  char rssiStr[10];
+  sprintf(rssiStr, "%ddBm", rssi);
+  int rssiLen = strlen(rssiStr);
+  int totalRssiWidth = rssiLen * charWidth - 1;
+  int rssiStartX = (GRID_WIDTH - totalRssiWidth) / 2;
+
+  for (int i = 0; i < rssiLen; i++) {
+    int fontIdx = getFontIndex(rssiStr[i]);
+    int charX = rssiStartX + i * charWidth;
+    for (int col = 0; col < FONT_WIDTH; col++) {
+      uint8_t colData = pgm_read_byte(&font5x7[fontIdx][col]);
+      for (int row = 0; row < FONT_HEIGHT; row++) {
+        if (colData & (1 << row)) {
+          int x = charX + col;
+          int y = 24 + row; // Panel 4 starts at y=24
+          if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+            int ledIdx = XY(x, y);
+            if (ledIdx >= 0 && ledIdx < activeLeds) {
+              // Color based on signal quality
+              CRGB textColor;
+              if (bars >= 4)
+                textColor = CRGB::Green;
+              else if (bars >= 2)
+                textColor = CRGB::Yellow;
+              else
+                textColor = CRGB::Red;
+              leds[ledIdx] = textColor;
+            }
+          }
+        }
+      }
+    }
+  }
+
   hue++;
 }

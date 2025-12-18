@@ -728,19 +728,14 @@ void setup() {
   Serial.println(password);
 
   WiFi.mode(WIFI_STA);
+  WiFi.setSleepMode(WIFI_NONE_SLEEP); // Disable WiFi sleep for better stability
+  WiFi.setAutoReconnect(true);        // Auto-reconnect if connection drops
   WiFi.begin(ssid, password);
-
-  // Configure Time (NTP) for PST/PDT
-  // PST8PDT: Standard PST, Daylight PDT
-  // M3.2.0: DST starts 2nd Sunday of March at 2am
-  // M11.1.0: DST ends 1st Sunday of November at 2am
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-  setenv("TZ", "PST8PDT,M3.2.0,M11.1.0", 1);
-  tzset();
 
   // Wait for connection - indicate with blue flashing
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+  while (WiFi.status() != WL_CONNECTED &&
+         attempts < 40) { // Increased to 40 attempts (20 seconds)
     delay(500);
     leds[0] = CRGB::Blue; // connecting
     FastLED.show();
@@ -757,12 +752,25 @@ void setup() {
     }
   }
 
-  // Connected - solid green for 500ms
-  leds[0] = CRGB::Green;
-  FastLED.show();
-  delay(500);
-  leds[0] = CRGB::Black;
-  FastLED.show();
+  if (WiFi.status() != WL_CONNECTED) {
+    // Failed to connect - flash red
+    Serial.println("\n*** WiFi FAILED to connect! ***");
+    for (int i = 0; i < 5; i++) {
+      leds[0] = CRGB::Red;
+      FastLED.show();
+      delay(200);
+      leds[0] = CRGB::Black;
+      FastLED.show();
+      delay(200);
+    }
+  } else {
+    // Connected - solid green for 500ms
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(500);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+  }
 
   // Print IP address
   Serial.println("\n\n*** WiFi Connected! ***");
@@ -770,6 +778,37 @@ void setup() {
   Serial.println(ssid);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  Serial.print("RSSI: ");
+  Serial.print(WiFi.RSSI());
+  Serial.println(" dBm");
+
+  // Configure Time (NTP) for PST/PDT - AFTER WiFi connects!
+  // PST8PDT: Standard PST, Daylight PDT
+  // M3.2.0: DST starts 2nd Sunday of March at 2am
+  // M11.1.0: DST ends 1st Sunday of November at 2am
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  setenv("TZ", "PST8PDT,M3.2.0,M11.1.0", 1);
+  tzset();
+
+  // Wait for NTP sync (up to 10 seconds)
+  Serial.print("Waiting for NTP sync...");
+  time_t now = time(nullptr);
+  int ntpAttempts = 0;
+  while (now < 24 * 3600 &&
+         ntpAttempts < 20) { // Wait until time is after Jan 1 1970 00:00
+    delay(500);
+    Serial.print(".");
+    now = time(nullptr);
+    ntpAttempts++;
+  }
+  if (now > 24 * 3600) {
+    Serial.println(" OK!");
+    struct tm *timeinfo = localtime(&now);
+    Serial.printf("Current time: %02d:%02d:%02d\n", timeinfo->tm_hour,
+                  timeinfo->tm_min, timeinfo->tm_sec);
+  } else {
+    Serial.println(" FAILED (will retry in background)");
+  }
 
   // OTA Setup
   ArduinoOTA.setHostname("LED_Controller");
