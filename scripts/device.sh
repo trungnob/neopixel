@@ -192,8 +192,20 @@ case "$command" in
     require_port
     # Use serial-specific environment if it exists, otherwise use default
     SERIAL_ENV="${ENVIRONMENT}_serial"
-    log "Uploading over serial ($SERIAL_ENV) to $PORT"
-    "$PIO_BIN" run -e "$SERIAL_ENV" -t upload --upload-port "$PORT"
+    log "Building firmware ($SERIAL_ENV)"
+    # Build only (no upload)
+    "$PIO_BIN" run -e "$SERIAL_ENV"
+    
+    # Upload using esptool directly with sudo (only for serial access)
+    FIRMWARE=".pio/build/$SERIAL_ENV/firmware.bin"
+    if [[ ! -f "$FIRMWARE" ]]; then
+      echo "Firmware not found: $FIRMWARE" >&2
+      exit 1
+    fi
+    
+    log "Uploading $FIRMWARE to $PORT (using sudo for serial access)"
+    ESPTOOL_PY="$PROJECT_ROOT/.platformio/packages/tool-esptoolpy/esptool.py"
+    sudo python3 "$ESPTOOL_PY" --chip esp8266 --port "$PORT" --baud 460800 write_flash 0x0 "$FIRMWARE"
     ;;
   upload-ota)
     ensure_pio

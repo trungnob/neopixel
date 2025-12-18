@@ -34,6 +34,7 @@ import select
 import termios
 import tty
 from scipy.fft import rfft
+import time
 
 # Configuration
 ESP_IP = "192.168.1.130"
@@ -190,6 +191,8 @@ def main(brightness=0.3, mode="bars"):
     peaks = np.zeros(num_bins)  # Peak hold values
     peak_fall_speed = 0.5  # How fast peaks fall per frame
     frame_count = 0
+    last_fps_time = time.time()
+    last_fps_count = 0
     
     # State for new visualization modes
     waveform_history = np.zeros((GRID_WIDTH, CHUNK // (CHUNK // GRID_WIDTH)))  # Scrolling waveform buffer
@@ -674,8 +677,12 @@ def main(brightness=0.3, mode="bars"):
                 sock.sendto(bytes(pixels), (ESP_IP, UDP_PORT))
                 frame_count += 1
                 
-                if frame_count % 100 == 0:
-                    print(f"\rFrames: {frame_count}", end='', flush=True)
+                now = time.time()
+                if now - last_fps_time >= 1.0:
+                    fps = (frame_count - last_fps_count) / (now - last_fps_time)
+                    print(f"\rFPS: {fps:5.1f} | Frames: {frame_count}", end='', flush=True)
+                    last_fps_time = now
+                    last_fps_count = frame_count
     
     except KeyboardInterrupt:
         print(f"\n\nStopped. Total frames: {frame_count}")
